@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run Prediction - VitaCare Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        html,body { transition: background 0.45s, color 0.3s; }
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-main, #181B20);
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-main, #FFF);
+        }
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --form-card-bg: #232730;
+            --accent: #08D9D6;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 #08d9d622;
+        }
+        html.light {
+            --bg-main: #F4FEFF;
+            --bg-card: #E4FBF8;
+            --nav-bg: #DDF3F4;
+            --form-card-bg: #FFF;
+            --accent: #11C8C9;
+            --text-main: #1B263B;
+            --text-muted: #455664;
+            --shadow: 0 8px 28px 0 #11c8c933;
+        }
+        .nav-bar {
+            width: 100vw; background: var(--nav-bg);
+            color: var(--accent); font-weight: 800;
+            letter-spacing: 0.5px; box-shadow: var(--shadow);
+            padding: 18px 0; text-align: center; font-size: 1.32em;
+            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .theme-switcher {
+            position: absolute; top: 8px; right: 18px;
+            cursor: pointer; font-size: 1.75em; color: var(--accent);
+            background: none; border: none; outline: none; transition: color .25s;
+        }
+        .nav-links {
+            position: absolute; top: 8px; left: 18px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .form-control, .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 1.05em;
+            border: 2px solid var(--form-card-bg);
+            border-radius: 10px;
+            background: var(--form-card-bg);
+            color: var(--text-main);
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 14px 30px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 1.05em;
+            cursor: pointer;
+            border: none;
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            color: var(--bg-main);
+            box-shadow: 0 7px 24px #30e3ca33;
+        }
+        .test-data {
+            background: var(--form-card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .test-data strong {
+            color: var(--accent);
+        }
+    </style>
+    <script>
+    function setTheme(mode) {
+      document.documentElement.className = mode;
+      localStorage.setItem('theme', mode);
+      document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+    document.addEventListener('DOMContentLoaded',function(){
+      let theme = localStorage.getItem('theme');
+      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
+      setTheme(theme);
+    });
+    </script>
+</head>
+<body>
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="{{ url_for('staff.view_reports') }}">← Reports</a>
+        </div>
+        🔬 Run Prediction
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="section">
+            <h2>Report #{{ report.id }}</h2>
+            <p><strong>Patient:</strong> {{ report.patient_name if report.patient_name else 'N/A' }}</p>
+            <p><strong>Date:</strong> {{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else 'N/A' }}</p>
+        </div>
+        
+        {% if test_data %}
+        <div class="section">
+            <h2>Extracted Test Data</h2>
+            {% for param, value in test_data.items() %}
+            <div class="test-data">
+                <strong>{{ param }}:</strong> {{ "%.2f"|format(value) if value else 'N/A' }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="section">
+            <h2>Run Disease Prediction</h2>
+            <form method="POST">
+                <label class="form-label">Prediction Type</label>
+                <select name="prediction_type" class="form-select" required>
+                    <option value="all">All Diseases (Diabetes, Heart, Breast Cancer)</option>
+                    <option value="diabetes">Diabetes Only</option>
+                    <option value="heart">Heart Disease Only</option>
+                    <option value="breast_cancer">Breast Cancer Only</option>
+                </select>
+                
+                <label class="form-label">Symptoms (comma-separated)</label>
+                <input type="text" name="symptoms_text" class="form-control" placeholder="e.g., chest pain, fatigue, blurred vision">
+                
+                <button type="submit" class="btn">Run Prediction</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+

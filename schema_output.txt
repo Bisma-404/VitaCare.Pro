@@ -1,0 +1,368 @@
+-- ===================================================================
+-- HOSPITAL MANAGEMENT + MULTI-DISEASE DETECTION SYSTEM
+-- Complete MySQL Database Schema
+-- ===================================================================
+-- Database: hospital_management_db (Updated to match app.py)
+-- Engine: MySQL 8.0+
+-- Includes: Tables, Foreign Keys, Constraints, Indexes, Sample Data
+-- ===================================================================
+
+-- Create Database
+CREATE DATABASE IF NOT EXISTS hospital_management_db;
+USE hospital_management_db;
+
+-- ===================================================================
+-- 1. USERS TABLE (Base table for all users: staff and patients)
+-- ===================================================================
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    role ENUM('ADMIN', 'DOCTOR', 'LAB_TECH', 'PATIENT') NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    phone VARCHAR(15),
+    status ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_username (username),
+    INDEX idx_role (role),
+    INDEX idx_email (email),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 2. PATIENT PROFILES TABLE
+-- ===================================================================
+CREATE TABLE patient_profiles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    patient_id INT NOT NULL UNIQUE,
+    date_of_birth DATE,
+    gender ENUM('MALE', 'FEMALE', 'OTHER'),
+    blood_group VARCHAR(10),
+    address TEXT,
+    emergency_contact VARCHAR(100),
+    emergency_phone VARCHAR(15),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_patient_id (patient_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 3. PATIENT REPORTS TABLE
+-- ===================================================================
+CREATE TABLE patient_reports (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    patient_id INT NOT NULL,
+    staff_id INT NOT NULL,
+    report_type ENUM('GENERAL', 'DIABETES', 'HEART', 'BREAST_CANCER', 'LAB_REPORT') DEFAULT 'GENERAL',
+    uploaded_file VARCHAR(255),
+    notes TEXT,
+    status ENUM('PENDING', 'COMPLETED', 'ARCHIVED') DEFAULT 'PENDING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (staff_id) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_patient_id (patient_id),
+    INDEX idx_staff_id (staff_id),
+    INDEX idx_report_type (report_type),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 4. REPORT TESTS TABLE (Test results from reports)
+-- ===================================================================
+CREATE TABLE report_tests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    report_id INT NOT NULL,
+    test_name VARCHAR(100) NOT NULL,
+    test_value DECIMAL(10,2) NOT NULL,
+    unit VARCHAR(20),
+    normal_range VARCHAR(50),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES patient_reports(id) ON DELETE CASCADE,
+    INDEX idx_report_id (report_id),
+    INDEX idx_test_name (test_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 5. DISEASE MODELS TABLE (Available disease models)
+-- ===================================================================
+CREATE TABLE disease_models (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    disease_name VARCHAR(100) NOT NULL UNIQUE,
+    disease_code VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    model_file_path VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_disease_code (disease_code),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 6. DISEASE THRESHOLDS TABLE (Thresholds for DSA analysis)
+-- ===================================================================
+CREATE TABLE disease_thresholds (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    disease_id INT NOT NULL,
+    parameter_name VARCHAR(100) NOT NULL,
+    min_value DECIMAL(10,2),
+    max_value DECIMAL(10,2),
+    unit VARCHAR(20),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (disease_id) REFERENCES disease_models(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_disease_parameter (disease_id, parameter_name),
+    INDEX idx_disease_id (disease_id),
+    INDEX idx_parameter_name (parameter_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 7. SYMPTOMS TABLE
+-- ===================================================================
+CREATE TABLE symptoms (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    symptom_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    category VARCHAR(50),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_symptom_name (symptom_name),
+    INDEX idx_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 8. SYMPTOM-DISEASE MAPPING TABLE (Graph relationships)
+-- ===================================================================
+CREATE TABLE symptom_disease_mapping (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    symptom_id INT NOT NULL,
+    disease_id INT NOT NULL,
+    correlation_strength DECIMAL(3,2) DEFAULT 1.0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (symptom_id) REFERENCES symptoms(id) ON DELETE CASCADE,
+    FOREIGN KEY (disease_id) REFERENCES disease_models(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_symptom_disease (symptom_id, disease_id),
+    INDEX idx_symptom_id (symptom_id),
+    INDEX idx_disease_id (disease_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 9. PATIENT SYMPTOMS TABLE (Symptoms reported by patients)
+-- ===================================================================
+CREATE TABLE patient_symptoms (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    report_id INT NOT NULL,
+    symptom_id INT NOT NULL,
+    severity ENUM('MILD', 'MODERATE', 'SEVERE') DEFAULT 'MODERATE',
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES patient_reports(id) ON DELETE CASCADE,
+    FOREIGN KEY (symptom_id) REFERENCES symptoms(id) ON DELETE CASCADE,
+    INDEX idx_report_id (report_id),
+    INDEX idx_symptom_id (symptom_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 10. PREDICTIONS TABLE (Main predictions table)
+-- ===================================================================
+CREATE TABLE predictions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    report_id INT NOT NULL,
+    disease_id INT NOT NULL,
+    prediction_result INT NOT NULL COMMENT '0=Low Risk, 1=High Risk',
+    confidence_score DECIMAL(5,2) NOT NULL COMMENT '0-100',
+    method ENUM('DSA', 'ML', 'HYBRID') DEFAULT 'DSA',
+    dsa_result_id INT,
+    ml_result_id INT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES patient_reports(id) ON DELETE CASCADE,
+    FOREIGN KEY (disease_id) REFERENCES disease_models(id) ON DELETE CASCADE,
+    INDEX idx_report_id (report_id),
+    INDEX idx_disease_id (disease_id),
+    INDEX idx_prediction_result (prediction_result),
+    INDEX idx_confidence_score (confidence_score),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 11. DSA RESULTS TABLE (Detailed DSA analysis results)
+-- ===================================================================
+CREATE TABLE dsa_results (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    prediction_id INT NOT NULL,
+    threshold_violations JSON,
+    symptom_matches INT DEFAULT 0,
+    risk_score DECIMAL(5,2) NOT NULL,
+    decision_rules_applied TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prediction_id) REFERENCES predictions(id) ON DELETE CASCADE,
+    INDEX idx_prediction_id (prediction_id),
+    INDEX idx_risk_score (risk_score)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 12. ML PREDICTION HISTORY TABLE (ML model predictions)
+-- ===================================================================
+CREATE TABLE ml_prediction_history (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    prediction_id INT NOT NULL,
+    model_version VARCHAR(50),
+    features_used JSON,
+    prediction_probability DECIMAL(5,4),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prediction_id) REFERENCES predictions(id) ON DELETE CASCADE,
+    INDEX idx_prediction_id (prediction_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 13. STAFF ACTIVITY LOG TABLE
+-- ===================================================================
+CREATE TABLE staff_activity_log (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    related_patient_id INT,
+    related_report_id INT,
+    ip_address VARCHAR(45),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (related_patient_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (related_report_id) REFERENCES patient_reports(id) ON DELETE SET NULL,
+    INDEX idx_staff_id (staff_id),
+    INDEX idx_action_type (action_type),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- 14. LOGIN HISTORY TABLE
+-- ===================================================================
+CREATE TABLE login_history (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(255),
+    success BOOLEAN DEFAULT TRUE,
+    login_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_success (success),
+    INDEX idx_login_time (login_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================================================================
+-- SAMPLE DATA INSERTIONS
+-- ===================================================================
+
+-- Insert default admin user (password: admin123 - SHA256 hashed)
+INSERT INTO users (username, password, role, name, email, phone, status) VALUES
+('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'ADMIN', 'System Administrator', 'admin@hospital.com', '03001234567', 'ACTIVE'),
+('doctor1', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'DOCTOR', 'Dr. John Smith', 'doctor1@hospital.com', '03001234568', 'ACTIVE'),
+('labtech1', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'LAB_TECH', 'Lab Technician 1', 'labtech1@hospital.com', '03001234569', 'ACTIVE'),
+('patient1', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'PATIENT', 'Patient One', 'patient1@email.com', '03001234570', 'ACTIVE'),
+('patient2', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'PATIENT', 'Patient Two', 'patient2@email.com', '03001234571', 'ACTIVE');
+
+-- Insert disease models
+INSERT INTO disease_models (disease_name, disease_code, description, is_active) VALUES
+('Diabetes', 'diabetes', 'Diabetes prediction model based on glucose, BMI, and other factors', TRUE),
+('Heart Disease', 'heart', 'Heart disease prediction model based on cardiac health indicators', TRUE),
+('Breast Cancer', 'breast_cancer', 'Breast cancer malignancy detection based on cell characteristics', TRUE),
+('Hypertension', 'hypertension', 'Hypertension risk assessment model', TRUE),
+('Obesity', 'obesity', 'Obesity risk assessment based on BMI and related factors', TRUE);
+
+-- Insert disease thresholds (minimum 5 diseases as required)
+-- Diabetes thresholds
+INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
+(1, 'glucose', 70, 140, 'mg/dL'),
+(1, 'bmi', 18.5, 24.9, 'kg/m²'),
+(1, 'blood_pressure', 90, 140, 'mm Hg'),
+(1, 'insulin', 0, 25, 'µU/mL'),
+(1, 'age', 0, 120, 'years');
+
+-- Heart Disease thresholds
+INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
+(2, 'cholesterol', 125, 200, 'mg/dL'),
+(2, 'blood_pressure', 90, 140, 'mm Hg'),
+(2, 'age', 0, 120, 'years'),
+(2, 'heart_rate', 60, 100, 'bpm'),
+(2, 'oldpeak', 0, 2, 'mm');
+
+-- Breast Cancer thresholds
+INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
+(3, 'radius_mean', 5, 25, 'mm'),
+(3, 'texture_mean', 5, 40, 'unitless'),
+(3, 'perimeter_mean', 40, 200, 'mm'),
+(3, 'area_mean', 100, 2500, 'mm²'),
+(3, 'compactness_mean', 0.01, 0.4, 'unitless');
+
+-- Hypertension thresholds
+INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
+(4, 'systolic_bp', 90, 140, 'mm Hg'),
+(4, 'diastolic_bp', 60, 90, 'mm Hg'),
+(4, 'age', 0, 120, 'years'),
+(4, 'bmi', 18.5, 24.9, 'kg/m²');
+
+-- Obesity thresholds
+INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
+(5, 'bmi', 18.5, 24.9, 'kg/m²'),
+(5, 'weight', 50, 100, 'kg'),
+(5, 'body_fat', 10, 25, '%'),
+(5, 'waist_circumference', 80, 94, 'cm');
+
+-- Insert symptoms
+INSERT INTO symptoms (symptom_name, description, category) VALUES
+('chest_pain', 'Chest pain or discomfort', 'Cardiac'),
+('shortness_of_breath', 'Difficulty breathing or breathlessness', 'Cardiac'),
+('fatigue', 'Persistent tiredness or exhaustion', 'General'),
+('blurred_vision', 'Vision problems or blurred sight', 'Neurological'),
+('frequent_urination', 'Excessive urination frequency', 'Metabolic'),
+('dizziness', 'Lightheadedness or dizziness', 'Neurological'),
+('nausea', 'Feeling of nausea or vomiting', 'General'),
+('weight_changes', 'Unexplained weight gain or loss', 'General'),
+('excessive_thirst', 'Increased thirst', 'Metabolic'),
+('slow_healing', 'Slow wound healing', 'Metabolic');
+
+-- Insert symptom-disease mappings (Graph relationships)
+INSERT INTO symptom_disease_mapping (symptom_id, disease_id, correlation_strength) VALUES
+(1, 2, 0.9),  -- chest_pain -> heart_disease
+(2, 2, 0.8),  -- shortness_of_breath -> heart_disease
+(2, 1, 0.6),  -- shortness_of_breath -> diabetes
+(3, 2, 0.7),  -- fatigue -> heart_disease
+(3, 1, 0.7),  -- fatigue -> diabetes
+(3, 3, 0.6),  -- fatigue -> breast_cancer
+(4, 1, 0.8),  -- blurred_vision -> diabetes
+(5, 1, 0.9),  -- frequent_urination -> diabetes
+(6, 2, 0.6),  -- dizziness -> heart_disease
+(6, 1, 0.5),  -- dizziness -> diabetes
+(7, 2, 0.5),  -- nausea -> heart_disease
+(7, 1, 0.4),  -- nausea -> diabetes
+(8, 1, 0.7),  -- weight_changes -> diabetes
+(8, 3, 0.6),  -- weight_changes -> breast_cancer
+(9, 1, 0.9),  -- excessive_thirst -> diabetes
+(10, 1, 0.6); -- slow_healing -> diabetes
+
+-- Insert sample patient profile
+INSERT INTO patient_profiles (patient_id, date_of_birth, gender, blood_group, address, emergency_contact, emergency_phone) VALUES
+(4, '1985-05-15', 'MALE', 'O+', '123 Main Street, City', 'Emergency Contact', '03001234572'),
+(5, '1990-08-20', 'FEMALE', 'A+', '456 Oak Avenue, City', 'Emergency Contact 2', '03001234573');
+
+-- ===================================================================
+-- DATABASE SCHEMA COMPLETE
+-- ===================================================================
+-- Total Tables: 14
+-- Foreign Keys: 17
+-- Indexes: 45+
+-- Sample Data: 5 diseases, 10 symptoms, 5 users, mappings
+-- ===================================================================
+-- Notes:
+-- 1. All passwords are SHA256 hashed (default: admin123)
+-- 2. Foreign keys ensure referential integrity
+-- 3. Indexes optimize query performance
+-- 4. JSON fields used for flexible data storage
+-- 5. Enum types ensure data consistency
+-- ===================================================================
+

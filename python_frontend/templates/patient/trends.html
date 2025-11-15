@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trends - VitaCare Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        html,body { transition: background 0.45s, color 0.3s; }
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-main, #181B20);
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-main, #FFF);
+        }
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --accent: #08D9D6;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 #08d9d622;
+        }
+        html.light {
+            --bg-main: #fcfeff;
+            --bg-card: #FFFFFF;
+            --nav-bg: #F6FEFB;
+            --accent: #059494;
+            --text-main: #1A232E;
+            --text-muted: #455664;
+            --shadow: 0 10px 30px 0 #18c0ce1e;
+        }
+        .nav-bar {
+            width: 100vw; background: var(--nav-bg);
+            color: var(--accent); font-weight: 800;
+            letter-spacing: 0.5px; box-shadow: var(--shadow);
+            padding: 18px 0; text-align: center; font-size: 1.32em;
+            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .theme-switcher {
+            position: absolute; top: 8px; right: 18px;
+            cursor: pointer; font-size: 1.75em; color: var(--accent);
+            background: none; border: none; outline: none; transition: color .25s;
+        }
+        .nav-links {
+            position: absolute; top: 8px; left: 18px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        .trend-item {
+            background: var(--nav-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .trend-item strong {
+            color: var(--accent);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+    </style>
+    <script>
+    function setTheme(mode) {
+      document.documentElement.className = mode;
+      localStorage.setItem('theme', mode);
+      document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+    document.addEventListener('DOMContentLoaded',function(){
+      let theme = localStorage.getItem('theme');
+      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
+      setTheme(theme);
+    });
+    </script>
+</head>
+<body>
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="{{ url_for('patient.dashboard') }}">← Dashboard</a>
+        </div>
+        📈 Trends Analysis
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="section">
+            <h2>Health Trends</h2>
+            {% if trends %}
+                {% for param, trend_data in trends.items() %}
+                <div class="trend-item">
+                    <strong>{{ param }}</strong><br>
+                    Current: {{ "%.2f"|format(trend_data.current) }} | 
+                    Previous: {{ "%.2f"|format(trend_data.previous) }} | 
+                    Change: {{ trend_data.symbol }} {{ "%.1f"|format(trend_data.change_percent) }}%
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <p>No trend data available. Need at least 2 reports for trend analysis.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+

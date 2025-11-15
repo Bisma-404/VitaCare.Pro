@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Report - VitaCare Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        html,body { transition: background 0.45s, color 0.3s; }
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-main, #181B20);
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-main, #FFF);
+        }
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --form-card-bg: #232730;
+            --accent: #08D9D6;
+            --accent-contrast: #22262E;
+            --input-bg: #191e22;
+            --input-border: #08d9d670;
+            --disabled: #444A55;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 #08d9d622;
+        }
+        html.light {
+            --bg-main: #F4FEFF;
+            --bg-card: #E4FBF8;
+            --nav-bg: #DDF3F4;
+            --form-card-bg: #FFF;
+            --accent: #11C8C9;
+            --accent-contrast: #e4fbf8;
+            --input-bg: #fff;
+            --input-border: #11C8C977;
+            --disabled: #bde1df;
+            --text-main: #1B263B;
+            --text-muted: #455664;
+            --shadow: 0 8px 28px 0 #11c8c933;
+        }
+        .nav-bar {
+            width: 100vw; background: var(--nav-bg);
+            color: var(--accent); font-weight: 800;
+            letter-spacing: 0.5px; box-shadow: var(--shadow);
+            padding: 18px 0; text-align: center; font-size: 1.32em;
+            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .theme-switcher {
+            position: absolute; top: 8px; right: 18px;
+            cursor: pointer; font-size: 1.75em; color: var(--accent);
+            background: none; border: none; outline: none; transition: color .25s;
+        }
+        .nav-links {
+            position: absolute; top: 8px; left: 18px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+        }
+        .form-card h2 {
+            color: var(--accent);
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        .form-label {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .form-control, .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 1.05em;
+            border: 2px solid var(--input-border);
+            border-radius: 10px;
+            transition: border-color .22s, background .35s;
+            background: var(--input-bg);
+            color: var(--text-main);
+            margin-bottom: 20px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+        .form-text {
+            color: var(--text-muted);
+            font-size: 0.9em;
+            margin-top: -15px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 14px 30px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 1.05em;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+            transition: opacity 0.19s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            color: var(--accent-contrast);
+            box-shadow: 0 7px 24px #30e3ca33;
+        }
+        .btn-primary:hover {
+            opacity: 0.89;
+        }
+        .btn-secondary {
+            background: var(--disabled);
+            color: var(--text-main);
+            margin-left: 10px;
+        }
+        .btn-secondary:hover {
+            opacity: 0.8;
+        }
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-danger {
+            background: #ff444433;
+            border-left: 4px solid #ff4444;
+            color: #ff6666;
+        }
+        .alert-success {
+            background: #44ff4433;
+            border-left: 4px solid #44ff44;
+            color: #66ff66;
+        }
+    </style>
+    <script>
+    function setTheme(mode) {
+      document.documentElement.className = mode;
+      localStorage.setItem('theme', mode);
+      const switcher = document.getElementById('theme-switcher');
+      if (switcher) switcher.textContent = mode === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+    document.addEventListener('DOMContentLoaded',function(){
+      let theme = localStorage.getItem('theme');
+      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
+      setTheme(theme);
+    });
+    </script>
+</head>
+<body>
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="{{ url_for('staff.dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
+        🏥 VitaCare Pro - Upload Report
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+    </div>
+    
+    <div class="container">
+        <div class="form-card">
+            <h2>📤 Upload Patient Report</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" enctype="multipart/form-data">
+                <label for="patient_id" class="form-label">Select Patient</label>
+                <select class="form-select" id="patient_id" name="patient_id" required>
+                    <option value="">Choose a patient...</option>
+                    {% for patient in patients %}
+                    <option value="{{ patient.id }}">{{ patient.name }} ({{ patient.username }})</option>
+                    {% endfor %}
+                </select>
+                
+                <label for="report_file" class="form-label">Upload Medical Report (PDF/CSV/Image)</label>
+                <input type="file" class="form-control" id="report_file" name="report_file">
+                <div class="form-text">Upload PDF report, CSV data, or medical images. System will extract parameters for diabetes, heart disease, and breast cancer analysis.</div>
+                
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Additional notes or observations..."></textarea>
+                
+                <button type="submit" class="btn btn-primary">Upload Report</button>
+                <a href="{{ url_for('staff.dashboard') }}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

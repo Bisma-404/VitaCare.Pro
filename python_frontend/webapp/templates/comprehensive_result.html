@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Health Analysis Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            transition: background 0.45s, color 0.3s;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-main, #181B20);
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-main, #FFF);
+        }
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --accent: #08959c;
+            --accent-light: #30E3CA;
+            --card-title: #08D9D6;
+            --disabled: #444A55;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 #08d9d622;
+            --critical: #ff4444;
+            --medium: #ffaa00;
+            --low: #44ff44;
+        }
+        html.light {
+            --bg-main: #fcfeff;
+            --bg-card: #FFFFFF;
+            --nav-bg: #F6FEFB;
+            --accent: #059494;
+            --accent-light: #18c0ce;
+            --card-title: #0EBABA;
+            --disabled: #CFD9DE;
+            --text-main: #1A232E;
+            --text-muted: #455664;
+            --shadow: 0 10px 30px 0 #18c0ce1e;
+            --critical: #cc0000;
+            --medium: #cc8800;
+            --low: #00cc00;
+        }
+        .nav-bar {
+            width: 100vw;
+            background: var(--nav-bg);
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow);
+            padding: 18px 0;
+            text-align: center;
+            font-size: 1.32em;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+            position: relative;
+        }
+        .theme-switcher {
+            position: absolute;
+            top: 8px;
+            right: 18px;
+            cursor: pointer;
+            font-size: 1.75em;
+            color: var(--accent);
+            background: none;
+            border: none;
+            outline: none;
+            transition: color .25s;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 34px auto;
+            padding: 0 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .back-link:hover {
+            color: var(--accent-light);
+        }
+        .header-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        h1 {
+            color: var(--card-title);
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 900;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .result-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--accent);
+            transition: transform 0.3s;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+        }
+        .result-card.critical {
+            border-left-color: var(--critical);
+        }
+        .result-card.medium {
+            border-left-color: var(--medium);
+        }
+        .result-card.low {
+            border-left-color: var(--low);
+        }
+        .disease-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .disease-name {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--card-title);
+        }
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+        .risk-badge.critical {
+            background: rgba(255, 68, 68, 0.2);
+            color: var(--critical);
+        }
+        .risk-badge.medium {
+            background: rgba(255, 170, 0, 0.2);
+            color: var(--medium);
+        }
+        .risk-badge.low {
+            background: rgba(68, 255, 68, 0.2);
+            color: var(--low);
+        }
+        .outcome {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin: 10px 0;
+            color: var(--text-main);
+        }
+        .risk-score {
+            font-size: 1.1em;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+        .info-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: var(--nav-bg);
+            border-radius: 8px;
+            font-size: 0.95em;
+        }
+        .info-item strong {
+            color: var(--accent);
+        }
+        .trends-section {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        .trends-section h2 {
+            color: var(--card-title);
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        .trend-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: var(--nav-bg);
+            border-radius: 8px;
+        }
+        .trend-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .trend-values {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .trend-value {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+        .trend-arrow {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .trend-arrow.increasing {
+            color: var(--critical);
+        }
+        .trend-arrow.decreasing {
+            color: var(--low);
+        }
+        .trend-arrow.stable {
+            color: var(--medium);
+        }
+        .symptoms-section {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        .symptoms-section h2 {
+            color: var(--card-title);
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        .symptom-tag {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            background: var(--nav-bg);
+            border-radius: 20px;
+            color: var(--text-main);
+            font-size: 0.9em;
+        }
+        .btn {
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            color: #fff;
+            font-weight: 700;
+            padding: 14px 40px;
+            border-radius: 23px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.15em;
+            border: none;
+            box-shadow: 0 7px 24px #30e3ca33;
+            transition: opacity 0.19s;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn:hover {
+            opacity: 0.89;
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        @media (max-width: 700px) {
+            .container {
+                padding: 11px 2vw;
+            }
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script>
+        function setTheme(mode) {
+            document.documentElement.className = mode;
+            localStorage.setItem('theme', mode);
+            document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            let theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = 'dark';
+                localStorage.setItem('theme', 'dark');
+            }
+            setTheme(theme);
+        });
+    </script>
+</head>
+<body>
+    <div class="nav-bar">
+        🏥 Multi-Disease Detection
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+    </div>
+    <div class="container">
+        <a href="{{ url_for('general_analysis.general_analysis') }}" class="back-link">← New Analysis</a>
+        <a href="{{ url_for('index') }}" class="back-link" style="margin-left: 15px;">🏠 Home</a>
+        
+        <div class="header-card">
+            <h1>📊 Comprehensive Health Analysis Results</h1>
+            <p class="subtitle">Complete assessment across all disease models</p>
+        </div>
+        
+        {% if results %}
+        <div class="results-grid">
+            {% for result in results %}
+            <div class="result-card {{ result.risk_level.lower() }}">
+                <div class="disease-header">
+                    <div class="disease-name">{{ result.disease_name }}</div>
+                    <div class="risk-badge {{ result.risk_level.lower() }}">
+                        {{ result.risk_emoji }} {{ result.risk_level }}
+                    </div>
+                </div>
+                <div class="outcome">{{ result.outcome }}</div>
+                <div class="risk-score">Risk Score: {{ result.risk_score }}/100</div>
+                
+                <div class="info-item">
+                    <strong>Prediction:</strong> {{ "High Risk" if result.prediction == 1 else "Low Risk" }}
+                </div>
+                
+                {% if result.symptom_match %}
+                <div class="info-item">
+                    <strong>✓ Symptom Correlation:</strong> Selected symptoms match this disease
+                </div>
+                {% endif %}
+                
+                {% if result.abnormal_values %}
+                <div class="info-item">
+                    <strong>⚠️ Abnormal Values:</strong> Some parameters outside normal range
+                </div>
+                {% endif %}
+                
+                {% if result.get('trend_worsening') %}
+                <div class="info-item">
+                    <strong>📈 Trend:</strong> Parameters showing worsening trend
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-results">
+            <p>No results available. Please try again.</p>
+        </div>
+        {% endif %}
+        
+        {% if trends %}
+        <div class="trends-section">
+            <h2>📈 Parameter Trends</h2>
+            {% if history_count > 0 %}
+            <p style="color: var(--text-muted); margin-bottom: 15px;">
+                Comparing with {{ history_count }} previous report(s) in your history
+            </p>
+            {% endif %}
+            {% for param_name, trend_data in trends.items() %}
+            <div class="trend-item">
+                <div class="trend-name">{{ param_name.replace('_', ' ').title() }}</div>
+                <div class="trend-values">
+                    <span class="trend-value">Previous: {{ trend_data.previous }}</span>
+                    <span class="trend-arrow {{ trend_data.trend }}">{{ trend_data.symbol }}</span>
+                    <span class="trend-value">Current: {{ trend_data.current }}</span>
+                    <span class="trend-value" style="color: var(--accent);">
+                        ({{ trend_data.change_percent }}% {{ trend_data.trend }})
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if symptoms %}
+        <div class="symptoms-section">
+            <h2>🩺 Reported Symptoms</h2>
+            {% for symptom in symptoms %}
+            <span class="symptom-tag">{{ symptom }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="{{ url_for('general_analysis.general_analysis') }}" class="btn">Run Another Analysis</a>
+        </div>
+    </div>
+</body>
+</html>
+

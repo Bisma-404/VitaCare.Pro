@@ -6,6 +6,7 @@ A comprehensive health risk assessment system using a **custom-built C++ Decisio
 
 - **Pure C++ Implementation**: Decision tree built from scratch with custom entropy/Gini calculations
 - **Three Disease Predictions**: Diabetes, Heart Disease, and Breast Cancer
+- **OCR Integration**: Upload medical report images and auto-extract data using Tesseract OCR
 - **User-Friendly Interface**: Clean Flask web application with intuitive forms
 - **Real-Time Predictions**: Fast C++ backend for instant results
 - **Educational Focus**: Demonstrates DSA concepts in machine learning
@@ -16,6 +17,7 @@ A comprehensive health risk assessment system using a **custom-built C++ Decisio
 - **CMake**: 3.12 or higher
 - **Python**: 3.8 or higher
 - **pip**: For Python package management
+- **Tesseract OCR**: For image-based data extraction (optional but recommended)
 
 ## 🚀 Installation & Setup
 
@@ -63,6 +65,27 @@ cd python_frontend
 pip install -r requirements.txt
 cd ..
 ```
+
+### Step 3a: Install Tesseract OCR (Optional - for OCR functionality)
+
+**For OCR image upload feature:**
+
+**Windows:**
+- Download from: https://github.com/UB-Mannheim/tesseract/wiki
+- Install to: `C:\Program Files\Tesseract-OCR`
+- Add to PATH or update `webapp/ocr_utils.py`
+
+**Linux:**
+```bash
+sudo apt-get install tesseract-ocr
+```
+
+**macOS:**
+```bash
+brew install tesseract
+```
+
+**Quick Setup Guide:** See [OCR_QUICK_SETUP.md](OCR_QUICK_SETUP.md) for detailed instructions.
 
 ### Step 4: Build C++ Module
 
@@ -300,11 +323,23 @@ print(f"Prediction: {prediction}")  # 0 or 1
 ```
 
 ### Web Interface
+
+**Manual Entry:**
 1. Navigate to `http://127.0.0.1:5000`
 2. Select disease type
 3. Fill in medical indicators
 4. Click "Get Prediction"
 5. View risk assessment
+
+**OCR Upload (if Tesseract installed):**
+1. Navigate to `http://127.0.0.1:5000`
+2. Select disease type
+3. Click "Try OCR Upload"
+4. Upload medical report image
+5. Review and edit extracted data
+6. Confirm and get prediction
+
+**OCR Documentation:** See [OCR_INTEGRATION_GUIDE.md](OCR_INTEGRATION_GUIDE.md) for complete OCR functionality guide.
 
 ## 🚦 Testing
 

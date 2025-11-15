@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>General Health Analysis - Multi-Disease Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            transition: background 0.45s, color 0.3s;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-main, #181B20);
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-main, #FFF);
+        }
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --accent: #08959c;
+            --accent-light: #30E3CA;
+            --card-title: #08D9D6;
+            --disabled: #444A55;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 #08d9d622;
+        }
+        html.light {
+            --bg-main: #fcfeff;
+            --bg-card: #FFFFFF;
+            --nav-bg: #F6FEFB;
+            --accent: #059494;
+            --accent-light: #18c0ce;
+            --card-title: #0EBABA;
+            --disabled: #CFD9DE;
+            --text-main: #1A232E;
+            --text-muted: #455664;
+            --shadow: 0 10px 30px 0 #18c0ce1e;
+        }
+        .nav-bar {
+            width: 100vw;
+            background: var(--nav-bg);
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow);
+            padding: 18px 0;
+            text-align: center;
+            font-size: 1.32em;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+            position: relative;
+        }
+        .theme-switcher {
+            position: absolute;
+            top: 8px;
+            right: 18px;
+            cursor: pointer;
+            font-size: 1.75em;
+            color: var(--accent);
+            background: none;
+            border: none;
+            outline: none;
+            transition: color .25s;
+        }
+        .container {
+            max-width: 900px;
+            margin: 34px auto;
+            padding: 0 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .back-link:hover {
+            color: var(--accent-light);
+        }
+        .form-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: var(--card-title);
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 900;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.05em;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed var(--accent);
+            border-radius: 10px;
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-size: 1em;
+            cursor: pointer;
+        }
+        input[type="file"]:hover {
+            border-color: var(--accent-light);
+        }
+        .symptoms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .symptom-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: var(--bg-main);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .symptom-checkbox:hover {
+            background: var(--nav-bg);
+        }
+        .symptom-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .symptom-checkbox label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 400;
+            color: var(--text-main);
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-size: 1em;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-light);
+        }
+        .help-text {
+            color: var(--text-muted);
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .btn {
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            color: #fff;
+            font-weight: 700;
+            padding: 14px 40px;
+            border-radius: 23px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.15em;
+            border: none;
+            box-shadow: 0 7px 24px #30e3ca33;
+            transition: opacity 0.19s;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+        .btn:hover {
+            opacity: 0.89;
+            background: linear-gradient(135deg, #181B20 0%, var(--accent) 80%);
+        }
+        .info-box {
+            background: var(--nav-bg);
+            border-left: 4px solid var(--accent);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        .info-box p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.95em;
+        }
+        @media (max-width: 700px) {
+            .container {
+                padding: 11px 2vw;
+            }
+            .form-card {
+                padding: 24px;
+            }
+            .symptoms-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script>
+        function setTheme(mode) {
+            document.documentElement.className = mode;
+            localStorage.setItem('theme', mode);
+            document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            let theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = 'dark';
+                localStorage.setItem('theme', 'dark');
+            }
+            setTheme(theme);
+        });
+    </script>
+</head>
+<body>
+    <div class="nav-bar">
+        🏥 Multi-Disease Detection
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+    </div>
+    <div class="container">
+        <a href="{{ url_for('index') }}" class="back-link">← Back to Home</a>
+        
+        <div class="form-card">
+            <h1>🔬 General Health Analysis</h1>
+            <p class="subtitle">Complete medical report analysis across all disease models</p>
+            
+            <div class="info-box">
+                <p><strong>📋 How it works:</strong> Upload your complete medical report (PDF/image/CSV) and select symptoms. 
+                The system will analyze all three disease models simultaneously and provide a comprehensive health assessment with trend analysis.</p>
+            </div>
+            
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="medical_report">📄 Upload Medical Report</label>
+                    <input type="file" id="medical_report" name="medical_report" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.csv">
+                    <p class="help-text">Supported formats: PDF, PNG, JPG, JPEG, BMP, TIFF, CSV</p>
+                </div>
+                
+                <div class="form-group">
+                    <label>🩺 Select Symptoms (Check all that apply)</label>
+                    <div class="symptoms-grid">
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_chest_pain" name="symptoms" value="chest pain">
+                            <label for="symptom_chest_pain">Chest Pain</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_fatigue" name="symptoms" value="fatigue">
+                            <label for="symptom_fatigue">Fatigue</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_blurred_vision" name="symptoms" value="blurred vision">
+                            <label for="symptom_blurred_vision">Blurred Vision</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_frequent_urination" name="symptoms" value="frequent urination">
+                            <label for="symptom_frequent_urination">Frequent Urination</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_shortness_breath" name="symptoms" value="shortness of breath">
+                            <label for="symptom_shortness_breath">Shortness of Breath</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_dizziness" name="symptoms" value="dizziness">
+                            <label for="symptom_dizziness">Dizziness</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_nausea" name="symptoms" value="nausea">
+                            <label for="symptom_nausea">Nausea</label>
+                        </div>
+                        <div class="symptom-checkbox">
+                            <input type="checkbox" id="symptom_weight_changes" name="symptoms" value="weight changes">
+                            <label for="symptom_weight_changes">Weight Changes</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="symptoms_text">✍️ Additional Symptoms (Optional)</label>
+                    <textarea id="symptoms_text" name="symptoms_text" placeholder="Enter any additional symptoms separated by commas (e.g., headache, fever, joint pain)"></textarea>
+                    <p class="help-text">Separate multiple symptoms with commas</p>
+                </div>
+                
+                <button type="submit" class="btn">🚀 Run Complete Health Analysis</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+
