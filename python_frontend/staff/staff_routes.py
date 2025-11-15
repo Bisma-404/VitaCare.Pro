@@ -21,7 +21,7 @@ from predictions.prediction_engine import PredictionEngine
 from webapp.ocr_utils import OCRParser, get_default_values
 from utils.medical_mappings import normalize_parameter_name, get_diseases_for_symptom, is_parameter_normal, calculate_risk_score
 from utils.mapping import get_disease_config
-from utils.cpp_dsa_wrapper import HashMap as MedicalHashMap
+from utils.cpp_dsa_wrapper import MedicalHashMap
 import re
 
 # Import C++ tree module

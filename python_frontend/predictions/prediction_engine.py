@@ -9,7 +9,14 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Use C++ DSA implementations via wrapper
-from utils.cpp_dsa_wrapper import HashMap as MedicalHashMap, Stack as MedicalStack, Queue, PriorityQueue, SymptomDiseaseGraph, Set as MedicalSet
+from utils.cpp_dsa_wrapper import (
+    MedicalHashMap,
+    Stack as MedicalStack, 
+    Queue, 
+    MedicalPriorityQueue,
+    SymptomDiseaseGraphWrapper as SymptomDiseaseGraph,
+    MedicalSet
+)
 from dsa_engine.arrays import MedicalArray
 from dsa_engine.linked_list import MedicalLinkedList
 from dsa_engine.trees import DecisionTree
@@ -34,7 +41,7 @@ class PredictionEngine:
         self.threshold_map = MedicalHashMap()  # Disease thresholds (C++ HashMap)
         self.symptom_graph = SymptomDiseaseGraph()  # Symptom-disease relationships (C++ Graph)
         self.decision_tree = DecisionTree()  # Decision rules
-        self.priority_heap = PriorityQueue(max_heap=True)  # Disease ranking (C++ PriorityQueue)
+        self.priority_heap = MedicalPriorityQueue(max_heap=True)  # Disease ranking (C++ PriorityQueue)
         
         # Load thresholds from database
         self._load_thresholds()

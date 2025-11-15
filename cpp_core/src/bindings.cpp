@@ -2,9 +2,10 @@
 #include <pybind11/stl.h>
 #include "decision_tree_simple.h"
 #include "../Include/dsa_structures.h"
+
 namespace py = pybind11;
 
-// Concrete types for pybind (templates can't be directly bound)
+// Using-directive style - Concrete types for pybind (templates can't be directly bound)
 using StringStack = MedicalStack<std::string>;
 using StringQueue = MedicalQueue<std::string>;
 using StringLinkedList = MedicalLinkedList<std::string>;

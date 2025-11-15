@@ -4,12 +4,18 @@ This module handles image processing and text extraction for medical reports.
 """
 
 import re
+import sys
 import pytesseract
 from PIL import Image
 import os
 
+# Ensure UTF-8 output on Windows
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # ==============================
-# ✅ Configure Tesseract Path
+# Configure Tesseract Path
 # ==============================
 # Try multiple common Tesseract installation paths
 POSSIBLE_TESSERACT_PATHS = [
@@ -26,12 +32,10 @@ for path in POSSIBLE_TESSERACT_PATHS:
 
 if CUSTOM_TESSERACT_PATH:
     pytesseract.pytesseract.tesseract_cmd = CUSTOM_TESSERACT_PATH
-    print(f"✅ Tesseract path set to: {CUSTOM_TESSERACT_PATH}")
+    print("[OK] Tesseract path set to: " + CUSTOM_TESSERACT_PATH)
 else:
-    print(f"⚠️ Warning: Tesseract not found at common paths")
+    print("[WARNING] Tesseract not found at common paths")
     print("Attempting to use Tesseract from system PATH...")
-    # Let pytesseract try to find tesseract in system PATH
-    # If not found, it will raise TesseractNotFoundError when actually used
 
 
 class OCRParser:
