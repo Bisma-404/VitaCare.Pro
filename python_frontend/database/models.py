@@ -321,10 +321,10 @@ class DiseaseThresholdDAO:
     def get_all_thresholds():
         """Get all thresholds."""
         query = """
-            SELECT dt.*, dm.disease_name
+            SELECT dt.*, dm.disease_name, dm.disease_code
             FROM disease_thresholds dt
             JOIN disease_models dm ON dt.disease_id = dm.id
-            ORDER BY dm.disease_name, dt.parameter_name
+            ORDER BY dm.disease_code, dt.parameter_name
         """
         return DatabaseConnection.execute_query(query)
     

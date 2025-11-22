@@ -24,6 +24,7 @@ from dsa_engine.trees import DecisionTree
 
 from database.models import DiseaseThresholdDAO, PatientReportDAO
 from utils.mapping import get_disease_config
+import csv
 
 # Import C++ tree module for ML fallback and advanced DSA
 try:
@@ -49,6 +50,9 @@ class PredictionEngine:
         
         # Load thresholds from database
         self._load_thresholds()
+        # Load percentile thresholds from datasets (75/90/95)
+        self.percentile_map = {}
+        self._load_percentile_thresholds()
         
         # Load symptom-disease relationships
         self._load_symptom_disease_network()
@@ -58,9 +62,10 @@ class PredictionEngine:
         thresholds = DiseaseThresholdDAO.get_all_thresholds()
         
         for threshold in thresholds:
-            disease_name = threshold['disease_name']
+            # Use disease_code if available so keys match the internal disease_type codes
+            disease_code = threshold.get('disease_code') or threshold.get('disease_name')
             param_name = threshold['parameter_name']
-            key = f"{disease_name}:{param_name}"
+            key = f"{disease_code}:{param_name}"
             
             self.threshold_map.put(key, {
                 'min': threshold['min_value'],
@@ -87,6 +92,98 @@ class PredictionEngine:
             for disease in diseases:
                 self.symptom_graph.add_node(disease, 'disease')
                 self.symptom_graph.add_edge(symptom, disease, bidirectional=False)
+
+    def _compute_percentiles(self, values, percents=(75, 90, 95)):
+        """Compute percentiles without external dependencies. Returns dict of percent->value."""
+        out = {}
+        try:
+            vals = [v for v in values if v is not None]
+            if not vals:
+                return {p: None for p in percents}
+            vals_sorted = sorted(vals)
+            n = len(vals_sorted)
+            for p in percents:
+                # position using linear interpolation between nearest ranks
+                if n == 1:
+                    out[p] = vals_sorted[0]
+                    continue
+                rank = (p/100.0) * (n - 1)
+                lo = int(rank)
+                hi = min(lo + 1, n - 1)
+                frac = rank - lo
+                out[p] = vals_sorted[lo] * (1 - frac) + vals_sorted[hi] * frac
+            return out
+        except Exception:
+            return {p: None for p in percents}
+
+    def _load_percentile_thresholds(self):
+        """Load percentiles (75/90/95) per numeric field from CSV datasets for each disease."""
+        try:
+            base = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', 'datasets'))
+            diseases = ['diabetes', 'heart', 'breast_cancer']
+            for disease in diseases:
+                path = os.path.join(base, f"{disease}.csv")
+                if not os.path.exists(path):
+                    continue
+
+                # Prepare collectors for fields based on disease config
+                config = get_disease_config(disease)
+                field_names = []
+                if config and 'fields' in config:
+                    field_names = [f['name'] for f in config['fields']]
+
+                collectors = {name: [] for name in field_names}
+
+                with open(path, 'r', encoding='utf-8') as fh:
+                    reader = csv.DictReader(fh)
+                    for row in reader:
+                        # build a normalized header map for this row (keys are original headers)
+                        header_map = {}
+                        for h in row.keys():
+                            if h is None:
+                                continue
+                            norm = str(h).lower().replace(' ', '').replace('_', '').replace('"', '')
+                            header_map[norm] = h
+
+                        for name in field_names:
+                            norm_name = name.lower().replace(' ', '').replace('_', '')
+                            matched_key = None
+                            if norm_name in header_map:
+                                matched_key = header_map[norm_name]
+                            else:
+                                # try name variants
+                                if name in row:
+                                    matched_key = name
+                                elif name.title() in row:
+                                    matched_key = name.title()
+                                else:
+                                    # try replacing underscores with spaces
+                                    alt = name.replace('_', ' ')
+                                    if alt in row:
+                                        matched_key = alt
+
+                            if matched_key:
+                                val = row.get(matched_key)
+                            else:
+                                val = None
+
+                            try:
+                                if val is not None and val != '':
+                                    num = float(val)
+                                    collectors[name].append(num)
+                            except Exception:
+                                pass
+
+                # Compute percentiles per field
+                pct_map = {}
+                for name, vals in collectors.items():
+                    p = self._compute_percentiles(vals, percents=(75, 90, 95))
+                    pct_map[name] = {'p75': p.get(75), 'p90': p.get(90), 'p95': p.get(95)}
+
+                self.percentile_map[disease] = pct_map
+        except Exception as e:
+            # non-fatal; percentile_map stays empty
+            print(f"Warning loading percentiles: {e}")
     
     def analyze_with_dsa(self, test_data, symptoms, disease_type):
         """
@@ -141,29 +238,192 @@ class PredictionEngine:
             # apply a slightly reduced decision boost to lower sensitivity
             risk_score += max(0, decision.get('risk_boost', 0) - 5)
         
-        # Determine result
-        result = 0  # Low risk
+        # Apply clinical / heuristic rules to adjust severity
+        severity_label, severity_reason, adjusted_score = self._apply_clinical_rules(
+            disease_type, test_data, threshold_violations, symptom_matches, risk_score
+        )
+
+        # Map adjusted score to prediction + confidence
+        result = 0  # Low risk by default
         confidence = 0
-        
-        if risk_score >= 60:
-            result = 1  # High risk
-            confidence = min(95, risk_score + 5)
-        elif risk_score >= 40:
-            result = 1  # Moderate risk
-            confidence = max(50, risk_score + 5)
+
+        if adjusted_score >= 60 or severity_label == 'High':
+            result = 1
+            confidence = min(95, int(adjusted_score) + 5)
+        elif adjusted_score >= 40 or severity_label == 'Moderate':
+            result = 1
+            confidence = max(50, int(adjusted_score) + 5)
         else:
-            result = 0  # Low risk
-            confidence = 100 - risk_score
-        
+            result = 0
+            confidence = max(10, 100 - int(adjusted_score))
+
         return {
             'prediction': result,
             'confidence': confidence,
-            'risk_score': risk_score,
+            # Expose adjusted score as the main risk_score so callers use the combined logic
+            'risk_score': int(adjusted_score),
+            'adjusted_score': int(adjusted_score),
+            'severity_label': severity_label,
+            'severity_reason': severity_reason,
             'threshold_violations': threshold_violations,
             'symptom_matches': symptom_matches,
             'method': 'DSA',
             'decision_rules_applied': decision is not None
         }
+
+    def _apply_clinical_rules(self, disease_type, test_data, threshold_violations, symptom_matches, risk_score):
+        """
+        Apply disease-specific clinical heuristics (based on widely used cutoffs)
+        and a small percentile/combination logic to determine a severity label.
+
+        Returns: (severity_label, reason, adjusted_score)
+        """
+        # Start with base adjusted score = risk_score
+        adjusted = float(risk_score)
+        reasons = []
+        strong_flags = 0
+
+        if disease_type == 'diabetes':
+            # Common clinical cutoffs (fasting glucose mg/dL):
+            # Normal <100, Prediabetes 100-125, Diabetes >=126
+            glucose = None
+            if 'glucose' in test_data:
+                try:
+                    glucose = float(test_data.get('glucose') or 0)
+                except Exception:
+                    glucose = None
+
+            bmi = None
+            if 'bmi' in test_data:
+                try:
+                    bmi = float(test_data.get('bmi') or 0)
+                except Exception:
+                    bmi = None
+
+            if glucose is not None:
+                if glucose >= 126:
+                    adjusted += 25
+                    strong_flags += 1
+                    reasons.append(f'glucose >=126 ({glucose})')
+                elif 100 <= glucose < 126:
+                    adjusted += 12
+                    reasons.append(f'prediabetes-range glucose {glucose}')
+
+            if bmi is not None:
+                if bmi >= 35:
+                    adjusted += 10
+                    strong_flags += 1
+                    reasons.append(f'bmi >=35 ({bmi})')
+                elif bmi >= 30:
+                    adjusted += 6
+                    reasons.append(f'bmi >=30 ({bmi})')
+
+        elif disease_type == 'heart':
+            # Simple heart risk heuristics
+            age = float(test_data.get('age') or 0)
+            chol = float(test_data.get('chol') or 0)
+            sbp = float(test_data.get('trestbps') or test_data.get('systolic_bp') or 0)
+
+            if age >= 65 and chol > 240 and sbp > 140:
+                # more conservative: smaller bump for heart triple-risk
+                adjusted += 15
+                strong_flags += 1
+                reasons.append(f'age+chol+bp high (age {age}, chol {chol}, bp {sbp})')
+            elif chol > 240 or sbp > 140:
+                adjusted += 8
+                reasons.append(f'high chol or high BP (chol {chol}, bp {sbp})')
+            elif age >= 60:
+                adjusted += 6
+                reasons.append(f'age >=60 ({age})')
+
+        elif disease_type == 'breast_cancer':
+            # Heuristics for breast cancer features (WDBC dataset fields)
+            # Use radius_mean, texture_mean, perimeter_mean as indicators
+            def getf(name):
+                try:
+                    return float(test_data.get(name) or 0)
+                except Exception:
+                    return 0.0
+
+            radius = getf('radius_mean')
+            texture = getf('texture_mean')
+            perimeter = getf('perimeter_mean')
+
+            # Common heuristic: radius_mean > 15 associated with malignant larger masses
+            if radius > 15 or perimeter > 100:
+                adjusted += 30
+                strong_flags += 1
+                reasons.append(f'large radius/perimeter (r={radius}, p={perimeter})')
+            elif texture > 25:
+                adjusted += 12
+                reasons.append(f'high texture ({texture})')
+
+        # Simple combination logic: increase severity if multiple violations/symptoms
+        if len(threshold_violations) >= 2:
+            adjusted += 12
+            reasons.append(f'{len(threshold_violations)} threshold violations')
+
+        if symptom_matches >= 2:
+            adjusted += 6
+            reasons.append(f'{symptom_matches} symptom matches')
+        # Apply percentile-based flags (dataset-driven) if available
+        pct_map = self.percentile_map.get(disease_type, {})
+        for param, raw_val in test_data.items():
+            try:
+                val = float(raw_val)
+            except Exception:
+                continue
+
+            field_pct = pct_map.get(param)
+            if not field_pct:
+                continue
+
+            p95 = field_pct.get('p95')
+            p90 = field_pct.get('p90')
+            p75 = field_pct.get('p75')
+
+            # apply slightly smaller percentile bumps for heart to reduce sensitivity
+            if disease_type == 'heart':
+                if p95 is not None and val >= p95:
+                    adjusted += 12
+                    strong_flags += 1
+                    reasons.append(f'{param} >= 95th pct ({val} >= {round(p95,2)})')
+                elif p90 is not None and val >= p90:
+                    adjusted += 8
+                    reasons.append(f'{param} >= 90th pct ({val} >= {round(p90,2)})')
+                elif p75 is not None and val >= p75:
+                    adjusted += 3
+                    reasons.append(f'{param} >= 75th pct ({val} >= {round(p75,2)})')
+            else:
+                if p95 is not None and val >= p95:
+                    adjusted += 20
+                    strong_flags += 1
+                    reasons.append(f'{param} >= 95th pct ({val} >= {round(p95,2)})')
+                elif p90 is not None and val >= p90:
+                    adjusted += 12
+                    reasons.append(f'{param} >= 90th pct ({val} >= {round(p90,2)})')
+                elif p75 is not None and val >= p75:
+                    adjusted += 4
+                    reasons.append(f'{param} >= 75th pct ({val} >= {round(p75,2)})')
+
+        # If rules fail, keep adjusted as risk_score (no outer try/except)
+
+        # Normalize adjusted score to 0-100
+        adjusted_score = max(0.0, min(100.0, adjusted))
+
+        # Map to label (conservative: require multiple strong flags for High)
+        if adjusted_score >= 60:
+            if strong_flags >= 2:
+                label = 'High'
+            else:
+                label = 'Moderate'
+        elif adjusted_score >= 40:
+            label = 'Moderate'
+        else:
+            label = 'Low'
+
+        reason_text = '; '.join(reasons) if reasons else 'No specific clinical flags.'
+        return label, reason_text, adjusted_score
     
     def _apply_decision_tree(self, test_data, disease_type):
         """Apply decision tree rules."""
@@ -328,12 +588,22 @@ class PredictionEngine:
                 
                 # Use ML prediction if confidence is significantly higher
                 if ml_result['confidence'] > dsa_result['confidence'] + 15:
-                    return {
+                    # Merge DSA metadata into ML result to preserve severity/risk information
+                    merged = {
                         **ml_result,
                         'confidence': combined_confidence,
                         'method': 'ML (DSA confidence too low)',
                         'dsa_result': dsa_result
                     }
+                    # Populate top-level severity/risk fields from DSA when absent
+                    if not merged.get('severity_label') and dsa_result.get('severity_label'):
+                        merged['severity_label'] = dsa_result.get('severity_label')
+                        merged['severity_reason'] = dsa_result.get('severity_reason')
+                    if merged.get('risk_score') is None and dsa_result.get('risk_score') is not None:
+                        merged['risk_score'] = dsa_result.get('risk_score')
+                    if not merged.get('remark'):
+                        merged['remark'] = dsa_result.get('severity_reason') or 'Based on the analysis of provided health metrics.'
+                    return merged
         
         # Determine which result we will return (could be DSA or ML combined)
         final_result = dsa_result
@@ -348,12 +618,21 @@ class PredictionEngine:
 
                 # Use ML prediction if confidence is significantly higher
                 if ml_result['confidence'] > dsa_result['confidence'] + 15:
-                    final_result = {
+                    # Merge DSA metadata into ML result before using it as final_result
+                    merged = {
                         **ml_result,
                         'confidence': combined_confidence,
                         'method': 'ML (DSA confidence too low)',
                         'dsa_result': dsa_result
                     }
+                    if not merged.get('severity_label') and dsa_result.get('severity_label'):
+                        merged['severity_label'] = dsa_result.get('severity_label')
+                        merged['severity_reason'] = dsa_result.get('severity_reason')
+                    if merged.get('risk_score') is None and dsa_result.get('risk_score') is not None:
+                        merged['risk_score'] = dsa_result.get('risk_score')
+                    if not merged.get('remark'):
+                        merged['remark'] = dsa_result.get('severity_reason') or 'Based on the analysis of provided health metrics.'
+                    final_result = merged
 
         # Build an ordered features list (matching disease config) to enable human-friendly remarks
         try:
@@ -380,7 +659,33 @@ class PredictionEngine:
         # Attach a human-friendly remark based on disease-specific heuristics
         try:
             prediction_value = final_result.get('prediction', 0)
-            final_result['remark'] = self.get_remarks(disease_type, prediction_value, features)
+            # Ensure DSA metadata is present so templates can display severity info
+            if 'dsa_result' not in final_result:
+                final_result['dsa_result'] = dsa_result
+
+            # If ML result didn't include severity/risk, populate from DSA
+            if not final_result.get('severity_label') and dsa_result.get('severity_label'):
+                final_result['severity_label'] = dsa_result.get('severity_label')
+                final_result['severity_reason'] = dsa_result.get('severity_reason')
+            if not final_result.get('risk_score') and dsa_result.get('risk_score') is not None:
+                final_result['risk_score'] = dsa_result.get('risk_score')
+
+            # Try to generate a human-friendly remark. Prefer any existing remark,
+            # otherwise fall back to DSA's severity_reason.
+            if final_result.get('remark'):
+                pass
+            else:
+                # If the only available text is a technical severity_reason (parameter names/values),
+                # prefer a short human-friendly remark and keep the technical details in severity_reason.
+                sr = dsa_result.get('severity_reason')
+                if sr:
+                    # detect technical pattern like operators or parameter names
+                    if any(tok in sr for tok in ['>=', '<=', ' pct', 'pct', '=', 'parameter', 'radius', 'glucose', 'bmi', 'chol', 'bp']):
+                        final_result['remark'] = 'Clinical flags detected. See details for specifics.'
+                    else:
+                        final_result['remark'] = sr
+                else:
+                    final_result['remark'] = 'Based on the analysis of provided health metrics.'
         except Exception:
             final_result['remark'] = 'Based on the analysis of provided health metrics.'
 

@@ -45,8 +45,36 @@ cmake --install . --config Release
 - After `cmake --install`, the extension will be copied to `python_frontend/` (e.g. `cpp_tree.cp313-win_amd64.pyd`).
 - If you develop on Linux/macOS, use an appropriate generator, e.g. `cmake ..` then `cmake --build .`.
 
-**Running the Python App (Flask)**
-1. Set up a Python virtual environment and install requirements:
+# VitaCare Pro — Multi-Disease Detect Support System
+
+## Overview
+VitaCare Pro is a hybrid medical support system that combines a high-performance C++ DSA + Decision Tree core with a Python Flask frontend. It performs disease predictions (diabetes, heart disease, breast cancer), optional OCR of reports, and saves predictions to the database when available.
+
+## Repository layout (high level)
+- `cpp_core/` — C++ sources, pybind11 bindings and CMake configuration. Builds the `cpp_tree` extension used by the Python app.
+- `python_frontend/` — Flask application, templates, prediction engine, DB models and utilities.
+- `datasets/` — CSV files used to compute percentile thresholds and for evaluation.
+
+Notable components inside `python_frontend`:
+- `predictions/prediction_engine.py` — engine implementing DSA-first flow, percentile checks, clinical heuristics and ML fallback.
+- `utils/` — helpers and wrappers for the C++ DSA extension.
+- `templates/` — Jinja2 templates for Admin, Staff and Patient result pages.
+
+## Key features
+- DSA-first prediction flow with ML fallback.
+- Dataset-driven percentile thresholds computed from CSVs.
+- Disease-specific clinical heuristics that adjust a combined risk score and produce a short `remark` and a verbose `severity_reason`.
+- Clean UI: templates present a concise `remark` and hide verbose technical details in a collapsible `Details` element.
+- Optional OCR support via `pytesseract`.
+
+## Prerequisites
+- Python 3.11+ (3.13 used in development environment here)
+- `pip` packages listed in `python_frontend/requirements.txt`
+- CMake and a native C++ toolchain (to build `cpp_core` for best performance)
+- Tesseract OCR (optional)
+
+## Quick Python setup
+1. Create and activate a virtual environment:
 
 ```powershell
 cd python_frontend
@@ -55,7 +83,8 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-2. Ensure the `cpp_tree` module is present in `python_frontend/` (or on `PYTHONPATH`).
+2. Place the built `cpp_tree` extension into `python_frontend/` or add it to `PYTHONPATH`.
+
 3. Run the app:
 
 ```powershell
@@ -63,35 +92,30 @@ cd python_frontend
 python app.py
 ```
 
-- App serves on `http://127.0.0.1:5000` by default.
+The app serves on `http://127.0.0.1:5000` by default.
 
-**VS Code IntelliSense (pybind11 headers not found)**
-If VS Code shows errors like `cannot open source file "pybind11/pybind11.h"` in `bindings.cpp`, add the pybind11 include path to your C/C++ properties. A `c_cpp_properties.json` has been added under `.vscode/` with an example include path:
+## Build C++ extension (brief)
+On Windows with Visual Studio 2022 (example):
 
-- `C:/.../Python313/Lib/site-packages/pybind11/include`
-- `cpp_core/Include`
+```powershell
+cd cpp_core
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
+cmake --install . --config Release
+```
 
-If your Python or pybind11 is in a different location, update `.vscode/c_cpp_properties.json` accordingly.
+Adjust generator and commands for other systems (Ninja, Makefiles, etc.). After install, copy the produced `.pyd`/`.so` file to `python_frontend` or make it available on `PYTHONPATH`.
 
-**Troubleshooting**
-- "module 'cpp_tree' has no attribute 'HashMap'": indicates the `cpp_tree` module was built earlier without the DSA bindings. Rebuild `cpp_core` and reinstall (see Build steps).
-- `pybind11` related CMake errors: ensure `pybind11` is installed in the Python environment used by CMake (e.g. `pip install pybind11`).
-- Unicode/emoji print errors on Windows console: the repo adjusts `sys.stdout` to UTF-8 in `webapp/ocr_utils.py` to avoid these issues.
-- Database warnings such as `Unread result found` show up as runtime DB connection pool issues — these are separate from the C++ build and relate to DB use.
+## Notes & troubleshooting
+- If templates show raw technical lines, the engine now provides a short `remark` and the full technical `severity_reason` is available under the Details block.
+- The prediction engine ensures ML fallback results include DSA metadata so templates always receive `severity_label`, `severity_reason`, and `risk_score` when available.
 
-**Developer Notes**
-- The code intentionally uses Using-Directive Style for the Python wrapper: it imports C++ classes directly (e.g. `from cpp_tree import HashMap`) to keep usage concise.
-- `MedicalHashMap.put()` serializes dicts/lists into JSON strings and handles `Decimal` by converting to `float` so the C++ `HashMap` stores only strings.
-- Preference is to run C++ DSA implementations; the repo includes Python fallback implementations for environments where compiling the C++ extension isn't possible.
-
-**Recommended Next Steps**
-- Add CI to automatically build the C++ extension and run Python smoke tests.
-- Add unit tests for C++-backed wrappers (Python tests that exercise `MedicalHashMap`, `PriorityQueue`, etc.).
-- Package the extension for easier install (wheel) if distributing.
-
-**Contact & License**
-- Project owner / maintainer: `abdulrafay1402` (local workspace user: `Abdul Rafay`)
-- License: (not included) — add a `LICENSE` file if you intend to open-source this repo.
+## Next steps & contributions
+- Add CI to build the C++ extension and run tests.
+- Add unit tests for prediction rules and wrappers.
+- Package `cpp_tree` as a wheel to simplify installation across systems.
 
 ---
-README created by the development assistant — run the C++ build steps above before starting the app to ensure the high-performance C++ DSA core is available.
+Updated README — please refer to `FEATURES_DOCUMENTATION.md` for a more complete description of the prediction engine and design.

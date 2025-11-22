@@ -750,6 +750,8 @@ def predict_disease(disease_type):
             template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
             template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
             template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
+            template_severity = result.get('severity_label', dsa_sub.get('severity_label', None))
+            template_severity_reason = result.get('severity_reason', dsa_sub.get('severity_reason', ''))
 
             # Render result page (full page response)
             return render_template('admin/predict_result.html', 
@@ -762,7 +764,9 @@ def predict_disease(disease_type):
                                  disease_type=disease_type,
                                  threshold_violations=template_thresholds,
                                  symptom_matches=template_symptoms,
-                                 risk_score=template_risk)
+                                 risk_score=template_risk,
+                                 severity_label=template_severity,
+                                 severity_reason=template_severity_reason)
                                   
         except Exception as e:
             print(f"[ERROR] Prediction failed: {str(e)}")

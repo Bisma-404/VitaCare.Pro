@@ -1,3 +1,93 @@
+# Features Documentation — VitaCare Pro
+
+This document describes the main features, architecture decisions, and operational details of the Multi-Disease Detect Support System (VitaCare Pro).
+
+## High-level architecture
+
+- C++ DSA core (`cpp_core/`): high-performance data structures and a decision-tree implementation exposed to Python via `pybind11`. Provides fast `HashMap`, `PriorityQueue`, `SymptomDiseaseGraph`, `Set`, etc.
+- Python Flask frontend (`python_frontend/`): web UI, database access, prediction orchestration and template rendering.
+- Prediction engine (`python_frontend/predictions/prediction_engine.py`): central logic that runs DSA analysis first, applies clinical heuristics and percentile checks, and falls back to an ML model if needed.
+- Datasets (`datasets/`): CSVs used to compute percentiles and perform dataset-driven evaluation.
+
+## Prediction engine — behavior & rules
+
+Core flow implemented in `PredictionEngine`:
+
+1. analyze_with_dsa(test_data, symptoms, disease_type)
+   - Runs DSA checks against `threshold_map` (loaded from DB via `DiseaseThresholdDAO`).
+   - Tallies `threshold_violations` and `symptom_matches` (using a Symptom→Disease graph).
+   - Applies a simple decision tree (`_apply_decision_tree`) for additional boosts.
+   - Calls `_apply_clinical_rules` which:
+     - Applies disease-specific clinical heuristics (diabetes, heart, breast cancer).
+     - Uses dataset percentiles (p75/p90/p95) computed from CSVs to flag unusually high values.
+     - Produces: `adjusted_score` (0–100), `severity_label` (`Low`, `Moderate`, `High`), and a `severity_reason` (verbose technical text listing flags).
+
+2. predict(test_data, symptoms, disease_type)
+   - Calls `analyze_with_dsa` first.
+   - If DSA confidence < 60, it invokes `analyze_with_ml` (ML fallback) and may use ML result if ML confidence is significantly higher.
+   - When ML is used, DSA metadata is merged into the returned result so templates always receive `severity_label`, `severity_reason` and `risk_score` when available.
+   - Attaches a human-friendly `remark`. If only a technical `severity_reason` exists, the engine produces a short remark like "Clinical flags detected. See details for specifics." and keeps the verbose technical info in `severity_reason` for a Details block.
+
+Design rationale:
+- DSA-first reduces latency and allows deterministic rule-based reasoning for clinical flags.
+- Percentile-based flags are dataset-driven so the system adapts to dataset distributions rather than relying solely on fixed min/max ranges.
+- The UI receives a concise `remark` for users and can inspect verbose `severity_reason` on demand.
+
+## Database interactions
+
+- Database access lives in `python_frontend/database/` (`db_connection.py`, `models.py` etc.).
+- `DiseaseThresholdDAO` provides threshold records used to populate `threshold_map` at engine init.
+- Predictions are saved via `PredictionDAO.create_prediction` when a `report_id` and `disease_id` exist (guarded to avoid invalid DB inserts).
+
+## Web UI & templates
+
+- Result templates:
+  - `python_frontend/templates/admin/predict_result.html`
+  - `python_frontend/templates/staff/predict_result.html`
+  - `python_frontend/templates/patient/predict_result.html`
+
+Behavior:
+- Templates now prefer the engine-provided `severity_label` and `remark` for the main badge and textual summary.
+- Verbose technical details (`severity_reason`) are placed inside a `<details>` element labeled "Details" to avoid cluttering the primary view.
+
+## Utility files and cleanup
+
+- Temporary testing scripts named `tmp_*` were used during development. These should be removed before commits. The current workspace has had `tmp_*` files and Python caches under `python_frontend/` cleaned.
+
+## How to run a quick local check (developer)
+
+1. Start the Flask app locally (ensure virtualenv and requirements are installed):
+
+```powershell
+cd python_frontend
+python app.py
+```
+
+2. Use the web UI to run a prediction for a disease. The result pages are role-specific (admin/staff/patient) but the result template logic is shared.
+
+3. To run a programmatic check from the project root (examples):
+
+```powershell
+# run a small script that imports the PredictionEngine directly
+cd python_frontend
+python -c "from predictions.prediction_engine import PredictionEngine; e=PredictionEngine(); print(e.analyze_with_dsa({'glucose':140,'bmi':31}, [], 'diabetes'))"
+```
+
+## Cleaning workspace (what was removed)
+
+- Removed `tmp_*` helper scripts from `python_frontend` used for local testing.
+- Cleared `__pycache__` folders and `*.pyc` files under `python_frontend`.
+
+If you want a broader cleanup (build artifacts such as `build/`, CMake cache, etc.), review the directories under the repo root and list them before deletion.
+
+## Next steps & improvement ideas
+
+- Add unit tests and CI to build `cpp_core` and run smoke tests for the Flask app.
+- Add a small admin view for tuning percentile thresholds or disabling percentile-based flags per-disease.
+- Improve the ML fallback to provide probabilistic outputs (so the UI can show calibrated probabilities).
+
+---
+This document was generated to reflect the current implementation of the prediction engine, templates, and cleanup actions performed in the workspace.
 # VitaCare Pro - Features Documentation
 
 ## System Overview

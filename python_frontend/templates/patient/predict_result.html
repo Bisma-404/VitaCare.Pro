@@ -153,17 +153,35 @@
         <div class="card">
             <h1>{{ disease_name }} Result</h1>
 
-            {% set risk = risk_score|default(0) %}
-            {% if risk >= 50 %}
-            <div class="result-badge positive">⚠️ High Risk Detected</div>
-            {% elif risk >= 30 %}
-            <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
+            {% set _label = severity_label|default(outcome) %}
+            {% if _label %}
+                {% set _l = _label.lower() %}
+                {% if _l.startswith('high') or 'high' in _l %}
+                    <div class="result-badge positive">⚠️ High Risk Detected</div>
+                {% elif 'moder' in _l or 'mod' in _l %}
+                    <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
+                {% else %}
+                    <div class="result-badge negative">✅ Low Risk / Normal</div>
+                {% endif %}
             {% else %}
-            <div class="result-badge negative">✅ Low Risk / Normal</div>
+                {% set risk = risk_score|default(0) %}
+                {% if risk >= 50 %}
+                <div class="result-badge positive">⚠️ High Risk Detected</div>
+                {% elif risk >= 30 %}
+                <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
+                {% else %}
+                <div class="result-badge negative">✅ Low Risk / Normal</div>
+                {% endif %}
             {% endif %}
 
-            <p style="font-size: 1.2em;">{{ outcome }}</p>
-            <p>{{ remark }}</p>
+            <p style="font-size: 1.2em;">{{ severity_label|default(outcome) }}</p>
+            <p>{{ remark|default(severity_reason)|default('Based on the analysis of provided health metrics.') }}</p>
+            {% if severity_reason and severity_reason != remark %}
+            <details style="margin-top:8px;text-align:left;display:inline-block;">
+                <summary style="cursor:pointer;color:var(--text-muted,#a7e0df);">Details</summary>
+                <small style="color:var(--text-muted,#a7e0df);">{{ severity_reason }}</small>
+            </details>
+            {% endif %}
 
             {# Concise detection summary #}
             {% set violations = threshold_violations|default([]) %}
