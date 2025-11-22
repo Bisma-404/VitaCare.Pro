@@ -129,7 +129,7 @@ class PredictionEngine:
         for symptom in symptoms:
             symptom_set.add(symptom.lower().replace(' ', '_'))
         
-        for symptom in symptom_set:
+        for symptom in symptom_set.to_vector():
             diseases = self.symptom_graph.get_diseases_for_symptom(symptom)
             if disease_type in diseases:
                 symptom_matches += 1
