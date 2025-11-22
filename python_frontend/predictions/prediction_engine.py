@@ -121,7 +121,7 @@ class PredictionEngine:
                         'value': value,
                         'normal_range': f"{min_val}-{max_val}"
                     })
-                    risk_score += 25  # Increased from 20 for more sensitivity
+                    risk_score += 15  # reduced weight to make thresholds less sensitive
         
         # Check symptom correlations using graph
         symptom_matches = 0
@@ -133,23 +133,24 @@ class PredictionEngine:
             diseases = self.symptom_graph.get_diseases_for_symptom(symptom)
             if disease_type in diseases:
                 symptom_matches += 1
-                risk_score += 20  # Increased from 15 for more sensitivity
+                risk_score += 10  # reduced weight for symptom matches
         
         # Apply decision tree rules
         decision = self._apply_decision_tree(test_data, disease_type)
         if decision:
-            risk_score += decision.get('risk_boost', 0)
+            # apply a slightly reduced decision boost to lower sensitivity
+            risk_score += max(0, decision.get('risk_boost', 0) - 5)
         
         # Determine result
         result = 0  # Low risk
         confidence = 0
         
-        if risk_score >= 50:  # Lowered from 70 for more sensitivity
+        if risk_score >= 60:
             result = 1  # High risk
-            confidence = min(95, risk_score + 10)
-        elif risk_score >= 30:  # Lowered from 40 for more sensitivity
-            result = 1  # Medium-high risk
-            confidence = risk_score + 10
+            confidence = min(95, risk_score + 5)
+        elif risk_score >= 40:
+            result = 1  # Moderate risk
+            confidence = max(50, risk_score + 5)
         else:
             result = 0  # Low risk
             confidence = 100 - risk_score
