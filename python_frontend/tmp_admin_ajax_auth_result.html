@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Result - Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <link rel="stylesheet" href="/static/css/responsive.css">
     <style>
         /* Teal & black theme variables for this template */
         :root {
@@ -139,34 +139,67 @@
     </style>
     <div class="container">
         <div class="card result-card-inline" style="max-width:900px;margin:0 auto;">
-            <h1>{{ disease_name }} Result</h1>
+            <h1>Diabetes Result</h1>
 
-            <div class="result-badge {% if prediction == 1 %}positive{% else %}negative{% endif %}">
-                {% if prediction == 1 %}
-                ⚠️ High Risk Detected
-                {% else %}
+            <div class="result-badge negative">
+                
                 ✅ Low Risk / Normal
-                {% endif %}
+                
             </div>
 
-            <p style="font-size: 1.2em;">{{ outcome }}</p>
-            <p>{{ remark }}</p>
+            <p style="font-size: 1.2em;">Low Risk</p>
+            <p>Based on the analysis of provided health metrics.</p>
 
             <div class="details">
                 <h3>Input Data</h3>
                 <div class="data-grid">
-                    {% for i in range(features|length) %}
+                    
                     <div class="data-item">
-                        <div class="label">{{ field_names[i] }}</div>
-                        <div class="value">{{ features[i] }}</div>
+                        <div class="label">Number of Pregnancies</div>
+                        <div class="value">0.0</div>
                     </div>
-                    {% endfor %}
+                    
+                    <div class="data-item">
+                        <div class="label">Fasting Glucose Level (mg/dL)</div>
+                        <div class="value">100.0</div>
+                    </div>
+                    
+                    <div class="data-item">
+                        <div class="label">Blood Pressure (mm Hg)</div>
+                        <div class="value">80.0</div>
+                    </div>
+                    
+                    <div class="data-item">
+                        <div class="label">Skin Thickness (mm)</div>
+                        <div class="value">20.0</div>
+                    </div>
+                    
+                    <div class="data-item">
+                        <div class="label">Insulin Level (µU/mL)</div>
+                        <div class="value">0.0</div>
+                    </div>
+                    
+                    <div class="data-item">
+                        <div class="label">Body Mass Index (BMI)</div>
+                        <div class="value">25.0</div>
+                    </div>
+                    
+                    <div class="data-item">
+                        <div class="label">Diabetes Pedigree Function</div>
+                        <div class="value">0.5</div>
+                    </div>
+                    
+                    <div class="data-item">
+                        <div class="label">Age (years)</div>
+                        <div class="value">30.0</div>
+                    </div>
+                    
                 </div>
             </div>
 
             <div class="actions">
-                <a href="{{ url_for('admin.disease_selection') }}" class="btn btn-secondary">Back to Selection</a>
-                <a href="{{ url_for('admin.predict_disease', disease_type=disease_type) }}" class="btn btn-primary">New
+                <a href="/admin/disease-detection" class="btn btn-secondary">Back to Selection</a>
+                <a href="/admin/predict/diabetes" class="btn btn-primary">New
                     Prediction</a>
             </div>
         </div>
