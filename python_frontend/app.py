@@ -17,6 +17,7 @@ from staff.staff_routes import staff_bp
 from patient.patient_routes import patient_bp
 from general_analysis import general_analysis_bp
 from webapp_routes import webapp_bp
+from api_routes import api_bp
 
 app = Flask(__name__, 
             template_folder='templates',
@@ -30,6 +31,7 @@ app.register_blueprint(staff_bp)
 app.register_blueprint(patient_bp)
 app.register_blueprint(general_analysis_bp)
 app.register_blueprint(webapp_bp)
+app.register_blueprint(api_bp)
 
 # Database configuration
 DB_CONFIG = {

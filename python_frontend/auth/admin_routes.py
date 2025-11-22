@@ -2,6 +2,7 @@
 Admin Routes - User and Symptom Management for Doctors & Lab Technicians
 """
 import traceback
+import json
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from functools import wraps
 from database.db_connection import get_db_connection
@@ -701,9 +702,51 @@ def predict_disease(disease_type):
             features = []
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
-            
-            # Render result template to a string so we can return it directly
-            rendered = render_template('admin/predict_result.html', 
+
+            # Persist prediction to database (minimal flow)
+            try:
+                from database.models import PredictionDAO, PatientReportDAO
+
+                # Resolve disease_id by slug if available
+                disease_id = None
+                try:
+                    conn = get_db_connection()
+                    cur = conn.cursor(dictionary=True)
+                    cur.execute("SELECT id FROM disease_models WHERE disease_name = %s OR disease_code = %s", (disease_type, disease_type))
+                    r = cur.fetchone()
+                    if r:
+                        disease_id = r.get('id')
+                    cur.close()
+                    conn.close()
+                except Exception:
+                    traceback.print_exc()
+
+                report_id = None
+                # If the admin provided a patient_id in the form, create a report and attach the prediction
+                patient_id = request.form.get('patient_id') or request.form.get('patient')
+                if patient_id:
+                    try:
+                        staff_id = session.get('user_id')
+                        # Use 'GENERAL' report_type to match DB enum/length constraints
+                        report_id = PatientReportDAO.create_report(int(patient_id), staff_id, 'GENERAL', uploaded_file=None, notes='Admin prediction via UI')
+                        if not report_id:
+                            print('Warning: PatientReportDAO.create_report returned None')
+                    except Exception:
+                        traceback.print_exc()
+
+                # Create prediction record (report_id may be None)
+                try:
+                    if report_id is not None and disease_id is not None:
+                        PredictionDAO.create_prediction(report_id, disease_id, int(result.get('prediction', 0)), float(result.get('confidence', 0)), method=result.get('method', 'DSA'))
+                    else:
+                        print('Skipping PredictionDAO.create_prediction because report_id or disease_id is None')
+                except Exception:
+                    traceback.print_exc()
+            except Exception:
+                traceback.print_exc()
+
+            # Render result page (full page response)
+            return render_template('admin/predict_result.html', 
                                  prediction=result['prediction'],
                                  outcome=config['outcome_labels'][result['prediction']],
                                  remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
@@ -711,17 +754,9 @@ def predict_disease(disease_type):
                                  field_names=[f['label'] for f in config['fields']],
                                  disease_name=config['name'],
                                  disease_type=disease_type)
-
-            # If this is an AJAX request, return the rendered HTML as JSON
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'html': rendered})
-
-            # Otherwise, return a full page render (standard flow)
-            return rendered
                                   
         except Exception as e:
             print(f"[ERROR] Prediction failed: {str(e)}")
-            import traceback
             traceback.print_exc()
             flash(f'Prediction failed: {str(e)}', 'error')
             return redirect(request.url)
@@ -787,6 +822,45 @@ def ocr_review(disease_type):
                 features.append(test_data.get(field['name'], field.get('default', 0)))
             
             # Render result
+            # Persist prediction (OCR review flow)
+            try:
+                from database.models import PredictionDAO, PatientReportDAO
+
+                disease_id = None
+                try:
+                    conn = get_db_connection()
+                    cur = conn.cursor(dictionary=True)
+                    cur.execute("SELECT id FROM disease_models WHERE disease_name = %s OR disease_code = %s", (disease_type, disease_type))
+                    rr = cur.fetchone()
+                    if rr:
+                        disease_id = rr.get('id')
+                    cur.close()
+                    conn.close()
+                except Exception:
+                    traceback.print_exc()
+
+                report_id = None
+                patient_id = request.form.get('patient_id') or request.form.get('patient')
+                if patient_id:
+                    try:
+                        staff_id = session.get('user_id')
+                        # Use 'GENERAL' report_type to match DB enum/length constraints
+                        report_id = PatientReportDAO.create_report(int(patient_id), staff_id, 'GENERAL', uploaded_file=None, notes='OCR-reviewed prediction via UI')
+                        if not report_id:
+                            print('Warning: PatientReportDAO.create_report returned None')
+                    except Exception:
+                        traceback.print_exc()
+
+                try:
+                    if report_id is not None:
+                        PredictionDAO.create_prediction(report_id, disease_id, int(result.get('prediction', 0)), float(result.get('confidence', 0)), method=result.get('method', 'DSA'))
+                    else:
+                        print('Skipping PredictionDAO.create_prediction because report_id is None')
+                except Exception:
+                    traceback.print_exc()
+            except Exception:
+                traceback.print_exc()
+
             return render_template('admin/predict_result.html', 
                                  prediction=result['prediction'],
                                  outcome=config['outcome_labels'][result['prediction']],
