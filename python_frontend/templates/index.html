@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VitaCare Pro - Advanced Disease Detection Support</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ====== Theme variables (dark by default) ====== */
+    :root {
+      --accent: #008b8b;
+      --accent-light: #30e3ca;
+      --accent-contrast: #000000;
+      --bg-main: #000000;
+      --bg-card: #0d0d0d;
+      --nav-bg: #000000;
+      --form-card-bg: #0f0f0f;
+      --input-bg: #111111;
+      --input-border: rgba(0, 139, 139, 0.22);
+      --disabled: #444444;
+      --text-main: #ffffff;
+      --text-muted: #a7e0df;
+      --shadow: 0 6px 36px rgba(0, 0, 0, 0.6);
+      --max-width: 1200px;
+    }
+
+    /* Light mode override (if you toggle html.light on root) */
+    html.light {
+      --bg-main: #ffffff;
+      --bg-card: #f8f8f8;
+      --nav-bg: #ffffff;
+      --text-main: #000000;
+      --text-muted: #4b6b6b;
+      --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    /* ====== Base reset & layout ====== */
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: var(--bg-main);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.45;
+      -webkit-touch-callout: none;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Container */
+    .container {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ====== NAVBAR ====== */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 0;
+      background: transparent;
+      /* nav sits over page */
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.05rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .nav-links a {
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: var(--text-main);
+      font-weight: 600;
+      transition: background .18s ease, transform .12s ease;
+    }
+
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.03);
+      transform: translateY(-1px);
+    }
+
+    .btn-login {
+      background: var(--accent);
+      color: var(--accent-contrast);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    /* ====== HERO ====== */
+    .hero {
+      padding: 60px 0;
+      text-align: center;
+    }
+
+    .hero h1 {
+      margin: 0 0 18px 0;
+      font-size: clamp(1.85rem, 3.5vw, 2.6rem);
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 900px;
+      margin: 0 auto 22px auto;
+      color: var(--text-muted);
+      font-size: clamp(1rem, 1.6vw, 1.1rem);
+    }
+
+    .hero .cta {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 12px 26px;
+      border-radius: 12px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      color: var(--accent-contrast);
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: var(--shadow);
+    }
+
+    /* ====== FEATURES ====== */
+    .features {
+      padding: 40px 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .feature-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      text-align: left;
+      min-height: 160px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: transform .18s ease, box-shadow .18s ease;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+    }
+
+    .feature-icon {
+      font-size: 28px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      margin-top: 6px;
+    }
+
+    .feature-card h3 {
+      margin: 0 0 6px 0;
+      font-size: 1.05rem;
+    }
+
+    .feature-card p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.98rem;
+    }
+
+    /* ====== ABOUT SECTION ====== */
+    #about {
+      background: var(--bg-card);
+      padding: 72px 20px;
+      text-align: center;
+    }
+
+    #about h2 {
+      color: var(--accent);
+      font-size: clamp(1.25rem, 2.4vw, 2.2rem);
+      margin: 0 0 18px 0;
+    }
+
+    #about .about-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      color: var(--text-muted);
+      font-size: 1.03rem;
+      line-height: 1.55;
+    }
+
+    /* ====== FOOTER ====== */
+    footer {
+      padding: 24px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      background: transparent;
+    }
+
+    /* ====== Floating "What We Made" button (right center along x-axis) ====== */
+    .floating-info-btn {
+      position: fixed;
+      right: 14px;
+      /* x-axis offset from right edge */
+      top: 50%;
+      /* vertically center */
+      transform: translateY(-50%);
+      /* true vertical center */
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-contrast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 800;
+      text-decoration: none;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      transition: transform .18s ease, background .12s ease;
+    }
+
+    .floating-info-btn:hover {
+      transform: translateY(-50%) scale(1.06);
+      background: var(--accent-light);
+      color: #000;
+    }
+
+    /* Tooltip text on hover (small label) */
+    .floating-info-btn .tooltip {
+      position: absolute;
+      right: 70px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .12s ease, transform .12s ease;
+      transform-origin: right center;
+    }
+
+    .floating-info-btn:hover .tooltip {
+      opacity: 1;
+      transform: translateY(-50%) translateX(-6px);
+      pointer-events: auto;
+    }
+
+    /* ====== Responsive ====== */
+    @media (max-width: 980px) {
+      .features {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .nav-links {
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .features {
+        grid-template-columns: 1fr;
+      }
+
+      .navbar {
+        padding: 12px 0;
+      }
+
+      .hero {
+        padding: 44px 0;
+      }
+
+      .floating-info-btn {
+        width: 48px;
+        height: 48px;
+        right: 10px;
+      }
+
+      .floating-info-btn .tooltip {
+        display: none;
+      }
+
+      /* hide tooltip on very small screens */
+    }
+  </style>
+</head>
+
+<body>
+  <!-- NAV -->
+  <header class="container">
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+      <a class="logo" href="/">
+        <span aria-hidden="true">🏥</span>
+        <span>VitaCare Pro</span>
+      </a>
+
+      <div class="nav-links" role="menubar" aria-label="Primary links">
+        <a href="#about" role="menuitem">About</a>
+        <a href="#features" role="menuitem">Features</a>
+        <!-- Keep Flask/Jinja templating if you're using Flask; it's preserved -->
+        <a href="{{ url_for('auth.login') }}" class="btn-login" role="menuitem">Login</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <main>
+    <section class="hero container" aria-labelledby="hero-heading">
+      <h1 id="hero-heading">Advanced Disease Detection Support System</h1>
+      <p>
+        Empowering healthcare professionals with AI-driven insights for faster, more accurate diagnoses.
+        VitaCare Pro integrates seamless patient management with cutting-edge predictive analytics.
+      </p>
+      <a href="{{ url_for('auth.login') }}" class="cta" role="button">Get Started</a>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="features container" aria-label="Features">
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🧬</div>
+        <div>
+          <h3>AI Disease Detection</h3>
+          <p>Utilize advanced machine learning algorithms to predict potential health risks based on patient symptoms
+            and medical history.</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">📊</div>
+        <div>
+          <h3>Comprehensive Analysis</h3>
+          <p>Generate detailed reports and visualize trends to monitor patient health progress over time effectively.
+          </p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" aria-hidden="true">🛡️</div>
+        <div>
+          <h3>Secure & Reliable</h3>
+          <p>Built with data privacy in mind, ensuring sensitive patient information is protected with role-based access
+            control.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" aria-labelledby="about-heading">
+      <div class="container">
+        <h2 id="about-heading">About VitaCare Pro</h2>
+        <div class="about-inner">
+          <p>
+            VitaCare Pro is designed to bridge the gap between traditional medical practices and modern technology.
+            Our mission is to provide doctors, staff, and patients with a unified platform that simplifies the
+            complexities of disease detection and patient management. By leveraging the power of Artificial
+            Intelligence,
+            we aim to support clinical decision-making and improve patient outcomes.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <p>&copy; 2024 VitaCare Pro. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Floating "What We Made" button (right center, links to about.html) -->
+  <!--
+       - Positioned along the x-axis at the right edge, vertically centered.
+       - Accessible: aria-label & visible tooltip on hover.
+       - Link set to about.html as requested.
+  -->
+  <a href="{{ url_for('webapp.about') }}" class="floating-info-btn" aria-label="What we made — go to About page">
+    <span aria-hidden="true">?</span>
+    <span class="tooltip" role="tooltip">What we made</span>
+  </a>
+
+</body>
+
+</html>

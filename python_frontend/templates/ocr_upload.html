@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Upload - {{ disease_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+      /* Per-template teal & black theme (inline) for OCR upload */
+      :root {
+        --accent: #008b8b;
+        --accent-light: #30e3ca;
+        --accent-contrast: #000000;
+        --bg-main: #000000;
+        --bg-card: #0d0d0d;
+        --nav-bg: #000000;
+        --form-card-bg: #0f0f0f;
+        --input-bg: #111111;
+        --input-border: rgba(0,139,139,0.22);
+        --disabled: #444444;
+        --text-main: #FFFFFF;
+        --text-muted: #a7e0df;
+        --shadow: 0 6px 36px rgba(0,0,0,0.6);
+      }
+      html.light {
+        --bg-main: #FFFFFF;
+        --bg-card: #f8f8f8;
+        --nav-bg: #000000;
+        --text-main: #000000;
+        --accent: #008b8b;
+      }
+      body { margin: 0; background: var(--bg-main); color: var(--text-main); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+      .container { max-width: 700px; margin: 40px auto; padding: 30px; }
+      .upload-area { padding: 40px 20px; border: 2px dashed rgba(0,139,139,0.12); border-radius: 10px; background: var(--bg-card); }
+      .alert { padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+      .alert-danger { background: rgba(255,68,68,0.2); border-left: 4px solid #ff4444; color: #ff6666; }
+      .alert-success { background: rgba(68,255,68,0.2); border-left: 4px solid #44ff44; color: #66ff66; }
+      @media (max-width:600px) { .container { padding: 19px 3vw; } }
+    </style>
+    <script>
+    // Theme management
+    function setTheme(mode) {
+      document.documentElement.className = mode;
+      localStorage.setItem('theme', mode);
+      document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+    document.addEventListener('DOMContentLoaded',function(){
+      let theme = localStorage.getItem('theme');
+      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
+      setTheme(theme);
+      
+      // File upload handling
+      const uploadArea = document.getElementById('upload-area');
+      const fileInput = document.getElementById('file-input');
+      const previewArea = document.getElementById('preview-area');
+      const previewImg = document.getElementById('preview-img');
+      const fileInfo = document.getElementById('file-info');
+      const fileName = document.getElementById('file-name');
+      const submitBtn = document.getElementById('submit-btn');
+      
+      uploadArea.addEventListener('click', () => fileInput.click());
+      
+      fileInput.addEventListener('change', handleFile);
+      
+      // Drag and drop
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          fileInput.files = files;
+          handleFile();
+        }
+      });
+      
+      function handleFile() {
+        const file = fileInput.files[0];
+        if (file) {
+          // Validate file type
+          const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff'];
+          if (!validTypes.includes(file.type)) {
+            alert('Please upload a valid image file (JPG, PNG, BMP, TIFF)');
+            return;
+          }
+          
+          // Show preview
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            previewArea.style.display = 'block';
+            uploadArea.style.display = 'none';
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'flex';
+            submitBtn.disabled = false;
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+      
+      // Remove file
+      document.getElementById('remove-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        fileInput.value = '';
+        previewArea.style.display = 'none';
+        uploadArea.style.display = 'block';
+        fileInfo.style.display = 'none';
+        submitBtn.disabled = true;
+      });
+    });
+    </script>
+</head>
+<body>
+    <div class="nav-bar">
+        📄 OCR Medical Report Upload
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+    </div>
+    <div class="container">
+        <a href="{{ url_for('predict', disease_type=disease_type) }}" class="back-link">← Back to Manual Entry</a>
+        <header>
+            <h1>{{ disease_name }} - OCR Upload</h1>
+            <p>Upload a medical report image for automatic data extraction</p>
+        </header>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="upload-container">
+            <form method="POST" enctype="multipart/form-data">
+                <div id="upload-area" class="upload-area">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">Click to upload or drag and drop</div>
+                    <div class="upload-hint">Supported formats: JPG, PNG, BMP, TIFF (Max 16MB)</div>
+                </div>
+                
+                <input type="file" id="file-input" name="ocr_image" accept="image/*">
+                
+                <div id="preview-area" class="preview-area">
+                    <img id="preview-img" class="preview-img" alt="Preview">
+                </div>
+                
+                <div id="file-info" class="file-info" style="display: none;">
+                    <span class="file-name" id="file-name"></span>
+                    <button type="button" id="remove-btn" class="remove-btn">Remove</button>
+                </div>
+                
+                <button type="submit" id="submit-btn" class="btn-submit" disabled>
+                    Extract Data with OCR
+                </button>
+            </form>
+        </div>
+        
+        <div class="info-box">
+            <h3>📋 How OCR Works</h3>
+            <ul>
+                <li>Upload a clear photo or scan of your medical report</li>
+                <li>Our system will automatically extract relevant medical values</li>
+                <li>You'll be able to review and edit the extracted data</li>
+                <li>Confirm the values and get your prediction</li>
+            </ul>
+        </div>
+        
+        <div class="info-box">
+            <h3>💡 Tips for Best Results</h3>
+            <ul>
+                <li>Use high-resolution images with good lighting</li>
+                <li>Ensure text is clear and not blurry</li>
+                <li>Include field labels and values (e.g., "Glucose: 120")</li>
+                <li>Avoid handwritten notes - typed/printed text works best</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

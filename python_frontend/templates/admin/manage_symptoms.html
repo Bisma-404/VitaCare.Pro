@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symptoms Management - VitaCare Pro Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- per-template inline styling used; centralized modern.css removed -->
+    <style>:root{--accent:#008b8b;--accent-light:#30e3ca;--bg-main:#000;--bg-card:#0d0d0d;--text-main:#fff;--text-muted:#a7e0df;}</style>
+    <style>
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --accent: #08D9D6;
+            --accent-light: #30E3CA;
+            --card-title: #08D9D6;
+            --disabled: #444A55;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 #08d9d622;
+        }
+
+        html.light {
+            --bg-main: #fcfeff;
+            --bg-card: #FFFFFF;
+            --nav-bg: #F6FEFB;
+            --accent: #059494;
+            --accent-light: #18c0ce;
+            --card-title: #0EBABA;
+            --disabled: #CFD9DE;
+            --text-main: #1A232E;
+            --text-muted: #455664;
+            --shadow: 0 10px 30px 0 #18c0ce1e;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .admin-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+
+        .admin-sidebar {
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            padding: 30px 20px;
+            color: var(--bg-main);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        html.light .admin-sidebar {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+        }
+
+        .sidebar-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar-nav a {
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .admin-main {
+            padding: 40px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent);
+            color: var(--bg-main);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: var(--accent-light);
+        }
+
+        .search-section {
+            margin-bottom: 30px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .data-table thead {
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            color: var(--bg-main);
+        }
+
+        .data-table th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(8, 217, 214, 0.05);
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: #ff4444;
+            color: white;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            color: var(--bg-main);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 500px;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-main);
+            color: var(--text-main);
+        }
+
+        @media (max-width: 800px) {
+            .admin-container {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-sidebar {
+                display: none;
+            }
+
+            .admin-main {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Admin header removed for cleaner admin panel (top navbar removed) -->
+    <header class="admin-header">
+        <div>
+            <h1>Manage Symptoms</h1>
+            <p class="muted">Add or remove symptoms used by classifiers</p>
+        </div>
+        <!-- Removed duplicate header-level Add Symptom button — panel below contains the primary Add control -->
+    </header>
+    <style>
+        .admin-header{display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg-card,#0d0d0d);border-radius:10px;margin-bottom:18px}
+        .admin-header h1{margin:0;color:var(--accent,#008b8b);font-size:1.25rem}
+        .admin-header .muted{color:var(--text-muted,#a7e0df);font-size:0.9rem}
+        .admin-actions .btn{padding:8px 12px;border-radius:8px}
+    </style>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-title">⚙️ Admin</div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('admin.dashboard') }}">📊 Dashboard</a>
+                <a href="{{ url_for('admin.manage_users') }}">👥 Users</a>
+                <a href="{{ url_for('admin.manage_symptoms') }}" class="active">🔍 Symptoms</a>
+                <a href="{{ url_for('admin.analytics') }}">📈 Analytics</a>
+                <a href="{{ url_for('admin.disease_selection') }}">🩺 Disease Detection</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="admin-main">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h1>Symptom Management</h1>
+                <button class="btn" onclick="openAddSymptomModal()">+ Add Symptom</button>
+            </div>
+
+            {% if dsa_error %}
+            <div class="alert alert-danger" style="margin-bottom:20px;">
+                <strong>DSA Load Warning:</strong> {{ dsa_error }}
+            </div>
+            {% endif %}
+
+            <!-- Statistics -->
+            {% if not error %}
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-value">{{ symptom_count }}</div>
+                    <div class="stat-label">Total Symptoms</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Search -->
+            <div class="search-section">
+                <h2 style="font-size: 18px; margin-bottom: 15px;">Search Symptoms (Using DSA)</h2>
+                <div class="search-box">
+                    <input type="text" id="symptomSearch" placeholder="Type to search...">
+                    <th>Symptom Name</th>
+                    <th style="text-align: center;">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        {% if not error %}
+                        {% for symptom in symptoms[:50] %}
+                        <tr>
+                            <td>{{ symptom }}</td>
+                            <td style="text-align: center;">
+                                <button class="action-btn" onclick="deleteSymptom('{{ symptom }}')">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="2" style="text-align: center; padding: 30px;">
+                                <span style="color: #ff4444;">Error: {{ error }}</span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add Symptom Modal -->
+            <div id="addSymptomModal" class="modal">
+                <div class="modal-content">
+                    <h2>Add New Symptom</h2>
+                    <form id="addSymptomForm" style="margin-top: 20px;">
+                        <div class="form-group">
+                            <label>Symptom Name</label>
+                            <input type="text" name="symptom_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description (Optional)</label>
+                            <textarea name="description" rows="4" style="resize: vertical;"></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" class="btn" onclick="closeAddSymptomModal()"
+                                style="background: #ccc; color: #333;">Cancel</button>
+                            <button type="submit" class="btn">Add Symptom</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+                function openAddSymptomModal() {
+                    document.getElementById('addSymptomModal').classList.add('active');
+                }
+
+                function closeAddSymptomModal() {
+                    document.getElementById('addSymptomModal').classList.remove('active');
+                }
+
+                document.getElementById('addSymptomForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData);
+
+                    try {
+                        const response = await fetch('{{ url_for("admin.add_symptom") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+
+                        if (response.ok) {
+                            alert('Symptom added successfully!');
+                            closeAddSymptomModal();
+                            location.reload();
+                        } else {
+                            const error = await response.json();
+                            alert('Error: ' + error.error);
+                        }
+                    } catch (error) {
+                        alert('Failed: ' + error.message);
+                    }
+                });
+
+                async function searchSymptoms() {
+                    const query = document.getElementById('symptomSearch').value.trim();
+                    if (!query) return;
+
+                    try {
+                        const response = await fetch(`{{ url_for('admin.search_symptoms') }}?q=${encodeURIComponent(query)}`);
+                        const data = await response.json();
+
+                        const resultsDiv = document.getElementById('searchResults');
+                        if (data.results.length > 0) {
+                            resultsDiv.innerHTML = '<strong>Results:</strong><br>' + data.results.map(s => `<span class="badge badge-primary">${s}</span>`).join('');
+                        } else {
+                            resultsDiv.innerHTML = '<span style="color: #ccc;">No results found</span>';
+                        }
+                    } catch (error) {
+                        alert('Search failed: ' + error.message);
+                    }
+                }
+
+                async function deleteSymptom(symptomName) {
+                    if (!confirm(`Delete symptom: ${symptomName}?`)) return;
+
+                    try {
+                        // Get symptom ID from database
+                        const symptomResponse = await fetch(`{{ url_for('admin.get_symptom_id') }}?name=${encodeURIComponent(symptomName)}`);
+                        const symptomData = await symptomResponse.json();
+
+                        if (symptomData.id) {
+                            // Build delete URL using adminPrefix (robust)
+                            const adminPrefix = (function(){
+                                const dash = "{{ url_for('admin.dashboard') }}";
+                                return dash.replace(/\/dashboard\/?$/,'');
+                            })();
+                            const deleteUrl = `${adminPrefix}/symptoms/${symptomData.id}/delete`;
+                            const deleteResponse = await fetch(deleteUrl, {
+                                method: 'DELETE'
+                            });
+
+                            if (deleteResponse.ok) {
+                                alert('Symptom deleted successfully!');
+                                location.reload();
+                            } else {
+                                const error = await deleteResponse.json();
+                                alert('Error: ' + error.error);
+                            }
+                        } else {
+                            alert('Symptom not found');
+                        }
+                    } catch (error) {
+                        alert('Failed to delete symptom: ' + error.message);
+                    }
+                }
+            </script>
+</body>
+
+</html>

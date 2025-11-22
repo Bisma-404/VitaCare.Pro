@@ -11,7 +11,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from utils.mapping import get_disease_config, extract_features_from_form
 from ocr_utils import OCRParser, get_default_values
-from general_analysis import general_analysis_bp
 
 # Import C++ tree module
 try:
@@ -22,9 +21,6 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here-change-in-production'
-
-# Register blueprints
-app.register_blueprint(general_analysis_bp)
 
 # OCR Configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')

@@ -153,24 +153,15 @@
 </head>
 <body>
     <div class="nav-bar">
-        🏥 VitaCare Pro
+        🏥 Multi-Disease Detection
         <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
     </div>
     <div class="container">
         <header>
-            <h1>🏥 VitaCare Pro</h1>
+            <h1>🏥 Multi-Disease Detection System</h1>
             <p>AI-Powered Health Risk Assessment</p>
         </header>
         <div class="disease-grid">
-            <!-- General Analysis Card -->
-            <a href="{{ url_for('general_analysis.general_analysis') }}" class="disease-card" style="border-bottom: 3px solid #ff6b6b;">
-                <div class="disease-icon">🔬</div>
-                <h2>General Health Analysis</h2>
-                <p>Complete medical report analysis across all disease models with trend tracking</p>
-                <div class="card-footer">
-                    <span class="btn">Run Complete Analysis</span>
-                </div>
-            </a>
             {% for key, disease in diseases.items() %}
             <a href="{{ url_for('predict', disease_type=key) }}" class="disease-card">
                 <div class="disease-icon">{{ disease.icon }}</div>

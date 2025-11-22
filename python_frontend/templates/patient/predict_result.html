@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result - Patient Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <style>
+        /* Teal & black theme variables for this template */
+        :root { --accent: #008b8b; --accent-light: #30e3ca; --bg-main: #000; --bg-card: #0d0d0d; --text-main: #fff; --text-muted: #a7e0df; }
+    </style>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-main, #181B20);
+            color: var(--text-main, #FFF);
+            margin: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--bg-card, #22262E);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 6px 36px 0 rgba(8, 217, 214, 0.1);
+            text-align: center;
+        }
+
+        .result-badge {
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            display: inline-block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .positive {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff6666;
+            border: 2px solid #ff6666;
+        }
+
+        .negative {
+            background: rgba(8, 217, 214, 0.2);
+            color: #08D9D6;
+            border: 2px solid #08D9D6;
+        }
+
+        .details {
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .details h3 {
+            color: var(--text-muted, #B8E2E7);
+            border-bottom: 1px solid var(--disabled, #444A55);
+            padding-bottom: 10px;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .data-item {
+            background: var(--nav-bg, #171A1F);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .label {
+            color: var(--text-muted, #B8E2E7);
+            font-size: 0.9em;
+        }
+
+        .value {
+            color: var(--text-main, #FFF);
+            font-weight: 600;
+        }
+
+        .actions {
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: var(--accent, #08D9D6);
+            color: var(--bg-main, #181B20);
+        }
+
+        .btn-secondary {
+            background: var(--disabled, #444A55);
+            color: var(--text-main, #FFF);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Inlined navbar (previously includes/navbar.html) -->
+    <nav class="nav-bar">
+        <div class="nav-links">
+            {% if session.get('user_id') %}
+                <a href="{% if session.get('role') == 'ADMIN' %}{{ url_for('admin.dashboard') }}{% elif session.get('role') in ['DOCTOR', 'LAB_TECH'] %}{{ url_for('staff.dashboard') }}{% else %}{{ url_for('patient.dashboard') }}{% endif %}">🏠 Dashboard</a>
+                {% if session.get('role') == 'ADMIN' %}
+                    <a href="{{ url_for('admin.manage_users') }}">👥 Users</a>
+                    <a href="{{ url_for('admin.manage_symptoms') }}">🔍 Symptoms</a>
+                    <a href="{{ url_for('admin.analytics') }}">📊 Analytics</a>
+                    <a href="{{ url_for('admin.disease_selection') }}">🩺 Disease Detection</a>
+                {% elif session.get('role') in ['DOCTOR', 'LAB_TECH'] %}
+                    <a href="{{ url_for('staff.view_patients') }}">👥 Patients</a>
+                    <a href="{{ url_for('staff.view_reports') }}">📋 Reports</a>
+                    <a href="{{ url_for('staff.upload_report') }}">📤 Upload Report</a>
+                    <a href="{{ url_for('staff.disease_selection') }}">🩺 Disease Detection</a>
+                {% else %}
+                    <a href="{{ url_for('patient.view_reports') }}">📋 Reports</a>
+                    <a href="{{ url_for('patient.view_predictions') }}">🔮 Predictions</a>
+                    <a href="{{ url_for('patient.view_trends') }}">📈 Trends</a>
+                    <a href="{{ url_for('patient.disease_selection') }}">🩺 Disease Detection</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}">🚪 Logout</a>
+            {% else %}
+                <a href="{{ url_for('index') }}">🏠 Home</a>
+                <a href="{{ url_for('auth.login') }}">🔐 Login</a>
+                <a href="{{ url_for('auth.register') }}">📝 Register</a>
+            {% endif %}
+        </div>
+        <div style="text-align:center;"><strong>🏥 VitaCare Pro</strong>{% if session.get('name') %}<span style="font-size:0.7em; margin-left:15px; opacity:0.8;">Welcome, {{ session.get('name') }}</span>{% endif %}</div>
+        <button class="theme-switcher" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
+    </nav>
+    <script>function toggleTheme(){document.documentElement.classList.toggle('light');localStorage.setItem('theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');}if(localStorage.getItem('theme')==='light'){document.documentElement.classList.add('light');}</script>
+    <style>:root{--accent:#008b8b;--accent-light:#30e3ca;--bg-main:#000;--bg-card:#0d0d0d;--text-main:#fff;--text-muted:#a7e0df;}.nav-bar{width:100vw;background:var(--nav-bg);color:var(--accent);font-weight:800;letter-spacing:0.5px;box-shadow:var(--shadow);padding:18px 0;text-align:center;font-size:1.32em;border-bottom-left-radius:16px;border-bottom-right-radius:16px;position:relative;margin-bottom:30px}.theme-switcher{position:absolute;top:8px;right:18px;cursor:pointer;font-size:1.75em;color:var(--accent);background:none;border:none}.nav-links{position:absolute;top:8px;left:18px;display:flex;gap:15px;align-items:center;flex-wrap:wrap}.nav-links a{color:var(--accent);text-decoration:none;font-weight:600;font-size:0.9em;padding:5px 10px;border-radius:6px}.nav-links a:hover{background:rgba(8,139,139,0.08)}@media(max-width:768px){.nav-links{position:static;justify-content:center;margin-bottom:10px}.nav-bar{padding:15px 0}}</style>
+    <div class="container">
+        <div class="card">
+            <h1>{{ disease_name }} Result</h1>
+
+            <div class="result-badge {% if prediction == 1 %}positive{% else %}negative{% endif %}">
+                {% if prediction == 1 %}
+                ⚠️ High Risk Detected
+                {% else %}
+                ✅ Low Risk / Normal
+                {% endif %}
+            </div>
+
+            <p style="font-size: 1.2em;">{{ outcome }}</p>
+            <p>{{ remark }}</p>
+
+            <div class="details">
+                <h3>Input Data</h3>
+                <div class="data-grid">
+                    {% for i in range(features|length) %}
+                    <div class="data-item">
+                        <div class="label">{{ field_names[i] }}</div>
+                        <div class="value">{{ features[i] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="actions">
+                <a href="{{ url_for('patient.disease_selection') }}" class="btn btn-secondary">Back to Selection</a>
+                <a href="{{ url_for('patient.predict_disease', disease_type=disease_type) }}"
+                    class="btn btn-primary">New Prediction</a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

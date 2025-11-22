@@ -2,6 +2,7 @@
 #include <pybind11/stl.h>
 #include "decision_tree_simple.h"
 #include "../Include/dsa_structures.h"
+#include "../Include/advanced_dsa.h"
 
 namespace py = pybind11;
 
@@ -126,4 +127,63 @@ PYBIND11_MODULE(cpp_tree, m) {
         .def("clear", &StringLinkedList::clear, "Clear all items")
         .def("to_vector", &StringLinkedList::toVector, "Get all items as vector")
         .def("get", &StringLinkedList::get, "Get item at index");
+
+    // ========================================================================
+    // ADVANCED DSA - SORTING, SEARCHING, RISK ANALYSIS
+    // ========================================================================
+    
+    // RISK FACTORS (nested struct for RiskScorer)
+    py::class_<RiskFactors>(m, "RiskFactors")
+        .def(py::init<>())
+        .def(py::init<double, double, double, double>())
+        .def_readwrite("symptom_weight", &RiskFactors::symptomWeight)
+        .def_readwrite("frequency_weight", &RiskFactors::frequencyWeight)
+        .def_readwrite("comorbidity_weight", &RiskFactors::comorbidityWeight)
+        .def_readwrite("age_factor_weight", &RiskFactors::ageFactorWeight);
+
+    // MEDICAL SORTING (static methods)
+    py::class_<MedicalSorting>(m, "MedicalSorting")
+        .def_static("quick_sort_by_score", &MedicalSorting::quickSortByScore,
+                   py::arg("items"), py::arg("descending") = true,
+                   "Sort disease-score pairs using QuickSort")
+        .def_static("merge_sort_by_score", &MedicalSorting::mergeSortByScore,
+                   py::arg("items"), py::arg("descending") = true,
+                   "Sort disease-score pairs using MergeSort");
+
+    // MEDICAL BINARY SEARCH (static methods)
+    py::class_<MedicalBinarySearch>(m, "MedicalBinarySearch")
+        .def_static("search", &MedicalBinarySearch::search,
+                   py::arg("sorted_list"), py::arg("target"),
+                   "Binary search for target in sorted list")
+        .def_static("range_search", &MedicalBinarySearch::rangeSearch,
+                   py::arg("sorted_list"), py::arg("min_val"), py::arg("max_val"),
+                   "Find all items in range [min_val, max_val]");
+
+    // SYMPTOM MANAGER
+    py::class_<SymptomManager>(m, "SymptomManager")
+        .def(py::init<>())
+        .def("load_symptoms", &SymptomManager::loadSymptoms,
+             "Load symptom list and index for fast lookup")
+        .def("get_symptoms", &SymptomManager::getSymptoms,
+             "Get all available symptoms")
+        .def("search_by_prefix", &SymptomManager::searchByPrefix,
+             py::arg("prefix"),
+             "Find symptoms starting with prefix (autocomplete)")
+        .def("get_most_common_symptoms", &SymptomManager::getMostCommonSymptoms,
+             py::arg("count"),
+             "Get N most frequently used symptoms")
+        .def("record_symptom_usage", &SymptomManager::recordSymptomUsage,
+             "Record symptom usage for analytics")
+        .def("get_frequency_analytics", &SymptomManager::getFrequencyAnalytics,
+             "Get symptom frequency statistics")
+        .def("get_symptom_count", &SymptomManager::getSymptomCount,
+             "Get total unique symptoms");
+
+    // RISK SCORER
+    py::class_<RiskScorer>(m, "RiskScorer")
+        .def(py::init<>())
+        .def_static("calculate_risk_score", &RiskScorer::calculateRiskScore,
+             "Calculate composite risk score from multiple factors")
+        .def_static("rank_diseases_by_risk", &RiskScorer::rankDiseasesByRisk,
+             "Rank diseases by risk score with composite multiplier");
 }

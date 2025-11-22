@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <style>
+        /* Teal & black theme variables for this template */
+        :root {
+            --accent: #008b8b;
+            --accent-light: #30e3ca;
+            --bg-main: #000;
+            --bg-card: #0d0d0d;
+            --text-main: #fff;
+            --text-muted: #a7e0df;
+        }
+    </style>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-main, #181B20);
+            color: var(--text-main, #FFF);
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--accent, #08D9D6);
+            margin: 0;
+        }
+
+        .back-btn {
+            color: var(--text-muted, #B8E2E7);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card, #22262E);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 6px 36px 0 rgba(8, 217, 214, 0.1);
+        }
+
+        .card h3 {
+            color: var(--text-muted, #B8E2E7);
+            margin-top: 0;
+            font-size: 1.1em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--disabled, #444A55);
+        }
+
+        th {
+            color: var(--accent, #08D9D6);
+        }
+
+        .empty {
+            color: var(--text-muted, #B8E2E7);
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Compact admin header (navbar removed per request) -->
+    <header class="admin-header">
+        <div>
+            <h1>Analytics</h1>
+            <p class="muted">View usage and prediction analytics</p>
+        </div>
+        <div class="admin-actions">
+            <form method="get" action="{{ url_for('admin.analytics') }}"
+                style="display:flex;gap:8px;align-items:center">
+                <input type="date" name="from" class="filter-input">
+                <input type="date" name="to" class="filter-input">
+                <button class="btn primary" type="submit">Apply</button>
+            </form>
+            {# <a class="btn" href="{{ url_for('admin.export_analytics') }}">Export</a> #}
+        </div>
+    </header>
+    <style>
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 14px;
+            background: var(--bg-card, #0d0d0d);
+            border-radius: 12px;
+            margin-bottom: 20px
+        }
+
+        .admin-header h1 {
+            margin: 0;
+            color: var(--accent, #008b8b);
+            font-size: 1.4rem
+        }
+
+        .admin-header .muted {
+            margin: 4px 0 0;
+            color: var(--text-muted, #a7e0df);
+            font-size: 0.9rem
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+
+        .filter-input {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: var(--input-bg, #111);
+            color: var(--text-main, #fff)
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-main, #fff);
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.06)
+        }
+
+        .btn.primary {
+            background: var(--accent, #008b8b);
+            color: #000;
+            border: none
+        }
+
+        @media(max-width:768px) {
+            .admin-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px
+            }
+        }
+    </style>
+    <div class="container">
+        <div class="header">
+            <h1>📊 System Analytics</h1>
+            <a href="{{ url_for('admin.dashboard') }}" class="back-btn">← Back to Dashboard</a>
+        </div>
+
+        <div class="grid">
+            <!-- Disease Distribution -->
+            <div class="card">
+                <h3>Disease Distribution</h3>
+                {% if disease_distribution %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Disease</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in disease_distribution %}
+                        <tr>
+                            <td style="text-transform: capitalize;">{{ item.disease_name }}</td>
+                            <td><strong>{{ item.count }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty">No data available</div>
+                {% endif %}
+            </div>
+
+            <!-- Risk Levels -->
+            <div class="card">
+                <h3>Risk Level Analysis</h3>
+                {% if risk_distribution %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Risk Level</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in risk_distribution %}
+                        <tr>
+                            <td>
+                                {% if item.risk_level == 'CRITICAL' %}🔴
+                                {% elif item.risk_level == 'MEDIUM' %}🟡
+                                {% else %}🟢{% endif %}
+                                {{ item.risk_level }}
+                            </td>
+                            <td><strong>{{ item.count }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty">No data available</div>
+                {% endif %}
+            </div>
+
+            <!-- Staff Performance -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>Staff Activity (Predictions)</h3>
+                {% if staff_predictions %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Staff Member</th>
+                            <th>Total Predictions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in staff_predictions %}
+                        <tr>
+                            <td>{{ item.username }}</td>
+                            <td><strong>{{ item.prediction_count }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty">No activity recorded yet</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

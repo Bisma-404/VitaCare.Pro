@@ -112,8 +112,16 @@ class DatabaseConnection:
         """Test database connection."""
         try:
             with cls.get_connection() as connection:
-                cursor = connection.cursor()
+                # Use buffered cursor to ensure any results are consumed, preventing
+                # "Unread result found" errors when executing simple test queries.
+                cursor = connection.cursor(buffered=True)
                 cursor.execute("SELECT 1")
+                # Fetch any results to clear the result set before closing cursor.
+                try:
+                    cursor.fetchall()
+                except Exception:
+                    # If fetch fails for some reason, ignore — we only need to clear results.
+                    pass
                 cursor.close()
                 return True
         except Error as e:
@@ -125,3 +133,9 @@ def init_db(config=None):
     """Initialize database connection."""
     DatabaseConnection.initialize(config)
 
+
+def get_db_connection():
+    """Get a raw database connection (for backward compatibility)."""
+    if DatabaseConnection._connection_pool is None:
+        DatabaseConnection.initialize()
+    return DatabaseConnection._connection_pool.get_connection()

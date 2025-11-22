@@ -3,7 +3,7 @@ Main Flask application for VitaCare Pro - Multi-Disease Detection System.
 Integrates MySQL database, DSA engine, and ML models.
 """
 
-from flask import Flask, redirect, url_for, session
+from flask import Flask, render_template
 import sys
 import os
 
@@ -12,8 +12,11 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from database.db_connection import init_db, DatabaseConnection
 from auth.auth_routes import auth_bp
+from auth.admin_routes import admin_bp
 from staff.staff_routes import staff_bp
 from patient.patient_routes import patient_bp
+from general_analysis import general_analysis_bp
+from webapp_routes import webapp_bp
 
 app = Flask(__name__, 
             template_folder='templates',
@@ -22,8 +25,11 @@ app.secret_key = 'hospital-management-secret-key-change-in-production'
 
 # Register blueprints
 app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
 app.register_blueprint(staff_bp)
 app.register_blueprint(patient_bp)
+app.register_blueprint(general_analysis_bp)
+app.register_blueprint(webapp_bp)
 
 # Database configuration
 DB_CONFIG = {
@@ -41,23 +47,8 @@ DB_CONFIG = {
 
 @app.route('/')
 def index():
-    """Redirect to login page."""
-    if 'user_id' in session:
-        if session.get('user_type') == 'staff':
-            return redirect(url_for('staff.dashboard'))
-        else:
-            return redirect(url_for('patient.dashboard'))
-    return redirect(url_for('auth.login'))
-
-
-def initialize_database():
-    """Initialize database connection on first request."""
-    try:
-        init_db(DB_CONFIG)
-        print("✅ Database connection initialized")
-    except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
-        print("Please ensure MySQL is running and database is created.")
+    """Render the public landing page."""
+    return render_template('index.html')
 
 
 if __name__ == '__main__':

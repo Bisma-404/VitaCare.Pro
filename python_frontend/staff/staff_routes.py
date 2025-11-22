@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from database.db_connection import DatabaseConnection
 from database.models import (
     UserDAO, PatientProfileDAO, PatientReportDAO, ReportTestDAO,
-    DiseaseThresholdDAO, PredictionDAO, LoginHistoryDAO
+    DiseaseThresholdDAO, PredictionDAO
 )
 from predictions.prediction_engine import PredictionEngine
-from webapp.ocr_utils import OCRParser, get_default_values
+from ocr_utils import OCRParser, get_default_values
 from utils.medical_mappings import normalize_parameter_name, get_diseases_for_symptom, is_parameter_normal, calculate_risk_score
-from utils.mapping import get_disease_config
+from utils.mapping import get_disease_config, DISEASE_CONFIG
 from utils.cpp_dsa_wrapper import MedicalHashMap
 import re
 
@@ -45,13 +45,17 @@ def staff_required(f):
     """Decorator to require staff authentication."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('user_type') != 'staff':
-            flash('Please login as staff to access this page', 'error')
+        if 'user_id' not in session:
+            flash('Please login to access this page', 'error')
             return redirect(url_for('auth.login'))
         
-        if session.get('role') == 'PATIENT':
+        # Check if user is staff (DOCTOR, LAB_TECH, or ADMIN)
+        role = session.get('role')
+        if role not in ['DOCTOR', 'LAB_TECH', 'ADMIN']:
             flash('Staff access required', 'error')
-            return redirect(url_for('patient.dashboard'))
+            if role == 'PATIENT':
+                return redirect(url_for('patient.dashboard'))
+            return redirect(url_for('auth.login'))
         
         return f(*args, **kwargs)
     return decorated_function
@@ -126,7 +130,7 @@ def upload_report():
             if file and file.filename:
                 if allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    upload_folder = os.path.join(os.path.dirname(__file__), '..', 'webapp', 'uploads')
+                    upload_folder = os.path.join(os.path.dirname(__file__), '..', 'uploads')
                     os.makedirs(upload_folder, exist_ok=True)
                     uploaded_file_path = os.path.join(upload_folder, filename)
                     file.save(uploaded_file_path)
@@ -297,16 +301,30 @@ def run_prediction(report_id):
                 if config:
                     defaults = get_default_values(prediction_type)
                     features = []
-                    
+                    from utils.medical_mappings import parameter_aliases
+
+                    def _resolve_test_value(td, fname):
+                        if fname in td:
+                            return td[fname]
+                        n = normalize_parameter_name(fname)
+                        if n in td:
+                            return td[n]
+                        for alias, standard in parameter_aliases.items():
+                            if standard == fname:
+                                a_norm = normalize_parameter_name(alias)
+                                if a_norm in td:
+                                    return td[a_norm]
+                                if alias in td:
+                                    return td[alias]
+                        return defaults.get(fname, field.get('default', 0))
+
                     for field in config['fields']:
                         field_name = field['name']
-                        value = test_data.get(field_name)
-                        if value is None:
-                            normalized = normalize_parameter_name(field_name)
-                            value = test_data.get(normalized)
-                        if value is None:
-                            value = defaults.get(field_name, field.get('default', 0))
-                        features.append(float(value))
+                        value = _resolve_test_value(test_data, field_name)
+                        try:
+                            features.append(float(value))
+                        except Exception:
+                            features.append(float(defaults.get(field_name, field.get('default', 0))))
                     
                     prediction = model.predict(features)
                     outcome_label = config['outcome_labels'].get(prediction, 'Unknown')
@@ -392,24 +410,46 @@ def _run_all_disease_models_cpp(test_data, symptoms_list):
             if not config:
                 continue
             
-            # Extract features for this disease
+            # Extract features for this disease (resolve values robustly)
             features = []
             defaults = get_default_values(disease_type)
-            
+
+            # helper to resolve a field value from various possible keys
+            from utils.medical_mappings import parameter_aliases
+
+            def _resolve_test_value(td, fname):
+                # direct match
+                if fname in td:
+                    return td[fname]
+                # normalized match
+                n = normalize_parameter_name(fname)
+                if n in td:
+                    return td[n]
+                # try aliases mapping (alias -> standard)
+                for alias, standard in parameter_aliases.items():
+                    if standard == fname:
+                        a_norm = normalize_parameter_name(alias)
+                        if a_norm in td:
+                            return td[a_norm]
+                        if alias in td:
+                            return td[alias]
+                # finally use defaults
+                return defaults.get(fname, field.get('default', 0))
+
             for field in config['fields']:
                 field_name = field['name']
-                # Try to get from test data
-                value = test_data.get(field_name)
-                if value is None:
-                    # Try normalized name
-                    normalized = normalize_parameter_name(field_name)
-                    value = test_data.get(normalized)
-                if value is None:
-                    # Use default
-                    value = defaults.get(field_name, field.get('default', 0))
-                
-                features.append(float(value))
+                value = _resolve_test_value(test_data, field_name)
+                try:
+                    features.append(float(value))
+                except Exception:
+                    features.append(float(defaults.get(field_name, field.get('default', 0))) )
             
+            # Debug: show resolved feature mapping for this disease
+            try:
+                print(f"[DEBUG] {disease_type} features: {list(zip([f['name'] for f in config['fields']], features))}")
+            except Exception:
+                pass
+
             # Make prediction using C++ model
             prediction = model.predict(features)
             outcome_label = config['outcome_labels'].get(prediction, 'Unknown')
@@ -527,4 +567,272 @@ def delete_report(report_id):
     else:
         flash('Failed to delete report', 'error')
     return redirect(url_for('staff.view_reports'))
+
+
+# ============================================================================
+# DISEASE DETECTION (Staff)
+# ============================================================================
+
+@staff_bp.route('/disease-detection', methods=['GET'])
+@staff_required
+def disease_selection():
+    """Render disease selection page for Staff."""
+    return render_template('staff/disease_selection.html')
+
+@staff_bp.route('/predict/<disease_type>', methods=['GET', 'POST'])
+@staff_required
+def predict_disease(disease_type):
+    """
+    Handle disease prediction for Staff.
+    GET: Render the input form.
+    POST: Process form data and show results.
+    """
+    if disease_type not in DISEASE_CONFIG:
+        flash('Invalid disease type', 'error')
+        return redirect(url_for('staff.disease_selection'))
+    
+    config = DISEASE_CONFIG[disease_type]
+    
+    if request.method == 'POST':
+        try:
+            test_data = {}
+            file_uploaded = False
+            
+            # Check if file was uploaded (OCR mode)
+            if 'report_file' in request.files:
+                file = request.files['report_file']
+                # Only process file if it has a filename (user actually selected a file)
+                if file and file.filename and file.filename.strip() and allowed_file(file.filename):
+                    file_uploaded = True
+                    # Save uploaded file
+                    filename = secure_filename(file.filename)
+                    upload_folder = os.path.join(os.path.dirname(__file__), '..', 'uploads')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    uploaded_file_path = os.path.join(upload_folder, filename)
+                    file.save(uploaded_file_path)
+                    
+                    # Extract data from file
+                    file_ext = uploaded_file_path.rsplit('.', 1)[1].lower()
+                    
+                    if file_ext == 'csv':
+                        # Parse CSV
+                        try:
+                            with open(uploaded_file_path, 'r', encoding='utf-8') as f:
+                                reader = csv.DictReader(f)
+                                first_row = next(reader, None)
+                                if first_row:
+                                    for key, value in first_row.items():
+                                        if value and value.strip():
+                                            normalized_key = normalize_parameter_name(key)
+                                            try:
+                                                test_data[normalized_key] = float(value.strip())
+                                            except ValueError:
+                                                continue
+                        except Exception as e:
+                            flash(f'Error parsing CSV: {str(e)}', 'error')
+                            return redirect(request.url)
+                    else:
+                        # Use OCR for PDF/Images
+                        try:
+                            raw_text = ocr_parser.extract_text(uploaded_file_path)
+                            
+                            # Extract parameters for the specific disease type
+                            patterns = ocr_parser.patterns.get(disease_type, {})
+                            param_map = MedicalHashMap()
+                            from utils.medical_mappings import parameter_aliases
+                            for alias, standard in parameter_aliases.items():
+                                param_map.put(alias, standard)
+                            
+                            for field_name, field_patterns in patterns.items():
+                                for pattern in field_patterns:
+                                    matches = re.finditer(pattern, raw_text, re.IGNORECASE)
+                                    for match in matches:
+                                        value_str = match.group(1)
+                                        try:
+                                            normalized = normalize_parameter_name(field_name)
+                                            if value_str.lower() in ["male", "m"]:
+                                                value = 1
+                                            elif value_str.lower() in ["female", "f"]:
+                                                value = 0
+                                            else:
+                                                value = float(value_str)
+                                            
+                                            if normalized not in test_data:
+                                                test_data[normalized] = value
+                                        except ValueError:
+                                            continue
+                        except Exception as e:
+                            flash(f'OCR extraction failed: {str(e)}', 'error')
+                            return redirect(request.url)
+                    
+                    # Clean up uploaded file
+                    if os.path.exists(uploaded_file_path):
+                        try:
+                            os.remove(uploaded_file_path)
+                        except:
+                            pass
+                    
+                    # Store extracted data in session and redirect to review page
+                    session['ocr_extracted_data'] = test_data
+                    session['disease_type_for_review'] = disease_type
+                    return redirect(url_for('staff.ocr_review', disease_type=disease_type))
+            
+            # If no file uploaded, extract from manual form
+            if not file_uploaded:
+                form_data = request.form.to_dict()
+                for field in config['fields']:
+                    field_name = field['name']
+                    value = form_data.get(field_name)
+                    if value:
+                        try:
+                            test_data[field_name] = float(value)
+                        except ValueError:
+                            continue
+            
+            # Get symptoms (optional)
+            symptoms = [] 
+            
+            # Run prediction
+            result = prediction_engine.predict(test_data, symptoms, disease_type)
+            
+            # Build features list in correct order
+            features = []
+            for field in config['fields']:
+                features.append(test_data.get(field['name'], field.get('default', 0)))
+            
+            # Render result
+            return render_template('staff/predict_result.html', 
+                                 prediction=result['prediction'],
+                                 outcome=config['outcome_labels'][result['prediction']],
+                                 remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
+                                 features=features,
+                                 field_names=[f['label'] for f in config['fields']],
+                                 disease_name=config['name'],
+                                 disease_type=disease_type)
+                                  
+        except Exception as e:
+            flash(f'Prediction failed: {str(e)}', 'error')
+            return redirect(request.url)
+            
+    # GET request
+    return render_template('staff/predict_form.html', 
+                         disease_name=config['name'],
+                         fields=config['fields'],
+                         disease_type=disease_type)
+
+
+@staff_bp.route('/predict/<disease_type>/ocr-review', methods=['GET', 'POST'])
+@staff_required
+def ocr_review(disease_type):
+    """
+    OCR Review Page - Display extracted data for user verification.
+    GET: Show review form with extracted data.
+    POST: Process reviewed data and run prediction.
+    """
+    if disease_type not in DISEASE_CONFIG:
+        flash('Invalid disease type', 'error')
+        return redirect(url_for('staff.disease_selection'))
+    
+    config = DISEASE_CONFIG[disease_type]
+    
+    # Get extracted data from session
+    extracted_data = session.get('ocr_extracted_data', {})
+    stored_disease_type = session.get('disease_type_for_review')
+    
+    # Verify disease type matches
+    if stored_disease_type != disease_type:
+        flash('Session mismatch. Please upload the file again.', 'error')
+        return redirect(url_for('staff.predict_disease', disease_type=disease_type))
+    
+    if request.method == 'POST':
+        # User has reviewed and confirmed the data
+        # Extract data from form (user may have edited values)
+        test_data = {}
+        form_data = request.form.to_dict()
+        
+        for field in config['fields']:
+            field_name = field['name']
+            value = form_data.get(field_name)
+            if value:
+                try:
+                    test_data[field_name] = float(value)
+                except ValueError:
+                    continue
+        
+        # Clear session data
+        session.pop('ocr_extracted_data', None)
+        session.pop('disease_type_for_review', None)
+        
+        # Run prediction
+        try:
+            symptoms = []  # Optional
+            result = prediction_engine.predict(test_data, symptoms, disease_type)
+            
+            # Build features list in correct order matching config fields
+            features = []
+            for field in config['fields']:
+                features.append(test_data.get(field['name'], field.get('default', 0)))
+            
+            # Render result
+            return render_template('staff/predict_result.html', 
+                                 prediction=result['prediction'],
+                                 outcome=config['outcome_labels'][result['prediction']],
+                                 remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
+                                 features=features,
+                                 field_names=[f['label'] for f in config['fields']],
+                                 disease_name=config['name'],
+                                 disease_type=disease_type)
+        except Exception as e:
+            flash(f'Prediction failed: {str(e)}', 'error')
+            return redirect(url_for('staff.predict_disease', disease_type=disease_type))
+    
+    # GET request - Show review form
+    # Prepare fields with extracted values and defaults
+    defaults = get_default_values(disease_type)
+    fields_with_values = []
+    auto_filled_count = 0
+    default_count = 0
+    
+    for field in config['fields']:
+        field_name = field['name']
+        field_copy = field.copy()
+        
+        # Try to get value from extracted data
+        value = None
+        is_auto_filled = False
+        
+        # Check direct match
+        if field_name in extracted_data:
+            value = extracted_data[field_name]
+            is_auto_filled = True
+        else:
+            # Check normalized match
+            normalized = normalize_parameter_name(field_name)
+            if normalized in extracted_data:
+                value = extracted_data[normalized]
+                is_auto_filled = True
+        
+        # If not found, use default
+        if value is None:
+            value = defaults.get(field_name, field.get('default', 0))
+            is_auto_filled = False
+        
+        field_copy['value'] = value
+        field_copy['is_auto_filled'] = is_auto_filled
+        fields_with_values.append(field_copy)
+        
+        if is_auto_filled:
+            auto_filled_count += 1
+        else:
+            default_count += 1
+    
+    return render_template('staff/ocr_review.html',
+                         disease_name=config['name'],
+                         disease_type=disease_type,
+                         fields=fields_with_values,
+                         auto_filled_count=auto_filled_count,
+                         default_count=default_count,
+                         total_count=len(fields_with_values))
+
+
 

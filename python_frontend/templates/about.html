@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>About | Multi-Disease Detection System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Hybrid Style (Your Colors + Modern Layout) -->
+    <style>
+      :root {
+        --bg: #0b0e16;
+        --bg-card: #121722;
+        --text: #dce3f1;
+        --muted: #a5b0c3;
+        --accent: #008b8b; /* changed from blue to teal */
+        --accent-soft: rgba(
+          0,
+          139,
+          139,
+          0.12
+        ); /* changed from blue soft to teal soft */
+        --border: rgba(255, 255, 255, 0.08);
+      }
+
+      html.light {
+        --bg: #f4f7fb;
+        --bg-card: #ffffff;
+        --text: #222831;
+        --muted: #5c6675;
+        --accent: #008b8b; /* teal */
+        --accent-soft: rgba(0, 139, 139, 0.1); /* teal soft */
+        --border: rgba(0, 0, 0, 0.08);
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+      }
+
+      /* NAVBAR */
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 28px;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+      }
+
+      .nav a {
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .nav .links a {
+        margin-left: 20px;
+        opacity: 0.8;
+      }
+
+      .nav .links a:hover {
+        opacity: 1;
+        color: var(--accent);
+      }
+
+      /* CONTENT WRAPPER */
+      main {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+
+      h2 {
+        margin-top: 30px;
+      }
+
+      /* CARD */
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px;
+        margin-bottom: 28px;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.18);
+      }
+
+      /* BADGES */
+      .chip,
+      .tech-badge {
+        display: inline-block;
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        border-radius: 40px;
+        margin: 6px;
+        border: 1px solid var(--accent);
+      }
+
+      /* GRID FEATURES */
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+        margin-top: 15px;
+      }
+
+      .feature-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      /* Removed floating-info-btn styles */
+
+      /* CTA */
+      .cta {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 12px 24px;
+        background: var(--accent);
+        color: #fff;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .cta:hover {
+        opacity: 0.85;
+      }
+
+      /* FOOTER */
+      .site-footer {
+        text-align: center;
+        padding: 28px;
+        color: var(--muted);
+        opacity: 0.7;
+      }
+
+      /* THEME SWITCHER */
+      .theme-switcher {
+        margin-left: 18px;
+        background: transparent;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        color: var(--text);
+      }
+
+      ol li {
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- NAVBAR -->
+    <nav class="nav">
+      <a href="{{ url_for('index') }}" class="logo">VitaCare Pro</a>
+
+      <div class="links">
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('about') }}" style="color: var(--accent)">About</a>
+        <button id="themeToggle" class="theme-switcher">🌙</button>
+      </div>
+    </nav>
+
+    <main>
+      <h1>About the Multi-Disease Detection System</h1>
+      <p style="opacity: 0.8; margin-bottom: 20px">
+        A hybrid C++/Python system designed to demonstrate data structures,
+        algorithms, and intelligent health assessment through machine-learning
+        decision trees.
+      </p>
+
+      <!-- FEATURES -->
+      <section class="card">
+        <h2>🚀 Key Features</h2>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h4>🧠 C++ Decision Tree Engine</h4>
+            <p>Custom C++ implementation exposed to Python via pybind11.</p>
+          </div>
+
+          <div class="feature-card">
+            <h4>🏥 Multi-Disease Support</h4>
+            <p>Models for Diabetes, Heart Disease, and Breast Cancer.</p>
+          </div>
+
+          <div class="feature-card">
+            <h4>📷 OCR Report Parsing</h4>
+            <p>Extract medical values from images using Tesseract OCR.</p>
+          </div>
+
+          <div class="feature-card">
+            <h4>⚡ Fast Predictions</h4>
+            <p>Deterministic, explainable decision-tree results.</p>
+          </div>
+
+          <div class="feature-card">
+            <h4>🧩 Modular Frontend</h4>
+            <p>Blueprint-based Flask architecture.</p>
+          </div>
+
+          <div class="feature-card">
+            <h4>🔒 Reliable Engineering</h4>
+            <p>Connection pooling, optimized compute layer.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="card">
+        <h2>🔬 How It Works</h2>
+
+        <h3>Decision Tree Algorithm</h3>
+        <ul>
+          <li>Information Gain for optimal splitting</li>
+          <li>Entropy & Gini impurity computation</li>
+          <li>Recursive threshold-based splitting</li>
+          <li>Stopping conditions (max depth, min samples)</li>
+        </ul>
+
+        <h3>Architecture</h3>
+        <ul>
+          <li><strong>C++ Backend:</strong> decision-tree engine</li>
+          <li><strong>pybind11:</strong> C++ ↔ Python bridge</li>
+          <li><strong>Flask Frontend:</strong> OCR + web UI</li>
+          <li><strong>HTML/CSS/JS:</strong> Responsive UI</li>
+        </ul>
+
+        <h3>Training Process</h3>
+        <ul>
+          <li>Data preprocessing from CSV datasets</li>
+          <li>Tree building (C++)</li>
+          <li>Hyperparameter tuning</li>
+          <li>Model saved to disk</li>
+          <li>~75–85% accuracy depending on dataset</li>
+        </ul>
+      </section>
+
+      <!-- TECH STACK -->
+      <section class="card">
+        <h2>💻 Technology Stack</h2>
+        <span class="chip">C++ (engine)</span>
+        <span class="chip">Python / Flask</span>
+        <span class="chip">MySQL</span>
+        <span class="chip">pybind11</span>
+        <span class="chip">Tesseract OCR</span>
+        <span class="chip">CMake</span>
+        <span class="chip">HTML/CSS/JS</span>
+      </section>
+
+      <!-- DISEASES -->
+      <section class="card">
+        <h2>📈 Disease Predictions</h2>
+
+        <h3>1. Diabetes</h3>
+        <p>Uses 8 numeric health features (glucose, insulin, age, etc.)</p>
+
+        <h3>2. Heart Disease</h3>
+        <p>13 clinical indicators are evaluated.</p>
+
+        <h3>3. Breast Cancer</h3>
+        <p>10 cell-structure features analyzed.</p>
+      </section>
+
+      <!-- EDUCATIONAL VALUE -->
+      <section class="card">
+        <h2>🎓 Educational Value</h2>
+        <ul>
+          <li>Binary tree data structure implementation</li>
+          <li>Information theory in ML</li>
+          <li>C++ systems programming</li>
+          <li>Language interoperability</li>
+          <li>Flask routing & UI architecture</li>
+          <li>OCR image processing</li>
+          <li>Modular software engineering</li>
+        </ul>
+      </section>
+
+      <!-- DISCLAIMER -->
+      <section class="card">
+        <h2>⚠️ Important Disclaimer</h2>
+        <p>
+          This is an <strong>educational project only</strong>. Not intended for
+          medical, diagnostic, or clinical use.
+        </p>
+      </section>
+
+      <!-- PROJECT INFO -->
+      <section class="card">
+        <h2>📝 Project Information</h2>
+
+        <p>
+          <strong>Purpose:</strong> Demonstrate algorithms + system integration.
+        </p>
+        <p><strong>Prediction time:</strong> Typically sub-millisecond.</p>
+        <p><strong>Accuracy:</strong> ~75–85% (varies by dataset).</p>
+
+        <h3>Local Setup</h3>
+        <ol>
+          <li>Install deps: <code>pip install -r requirements.txt</code></li>
+          <li>Build C++ core: <code>cmake -S cpp_core -B build</code></li>
+          <li>Set MySQL env vars</li>
+          <li>Run App: <code>python app.py</code></li>
+        </ol>
+      </section>
+
+      <!-- CTA -->
+      <section class="card" style="text-align: center">
+        <h2>🚀 Ready to Try It?</h2>
+        <a href="{{ url_for('index') }}" class="cta">Go to Home Page</a>
+      </section>
+    </main>
+    <!-- FOOTER -->
+    <div class="site-footer">
+      Multi-Disease Detection System • Educational Prototype
+    </div>
+
+    <!-- Theme Toggle Script -->
+    <script>
+      const btn = document.getElementById("themeToggle");
+
+      function applyTheme(mode) {
+        if (mode === "light") document.documentElement.classList.add("light");
+        else document.documentElement.classList.remove("light");
+
+        btn.textContent = mode === "light" ? "☀️" : "🌙";
+        localStorage.setItem("vcare_theme", mode);
+      }
+
+      btn.addEventListener("click", () => {
+        const isLight = document.documentElement.classList.contains("light");
+        applyTheme(isLight ? "dark" : "light");
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        let saved = localStorage.getItem("vcare_theme");
+        if (!saved) {
+          saved = window.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+        }
+        applyTheme(saved);
+      });
+    </script>
+  </body>
+</html>
+

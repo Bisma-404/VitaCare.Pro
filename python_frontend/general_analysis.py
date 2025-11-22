@@ -13,7 +13,7 @@ import json
 from datetime import datetime
 
 # Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.dsa_structures import Stack, PriorityQueue, MedicalHashMap
 from utils.medical_mappings import (
@@ -26,7 +26,7 @@ from utils.medical_mappings import (
     normal_ranges
 )
 from ocr_utils import OCRParser, get_default_values
-from utils.mapping import get_disease_config, extract_features_from_form
+from utils.mapping import get_disease_config
 
 # Import C++ tree module
 try:
@@ -408,6 +408,21 @@ def general_analysis():
             
             # Override with extracted parameters
             all_params.update(extracted_params)
+            
+            # Override with manual entry (if provided)
+            manual_fields = ['age', 'glucose', 'blood_pressure', 'bmi', 'chol', 'trestbps', 'thalach']
+            for field in manual_fields:
+                value = request.form.get(field)
+                if value and value.strip():
+                    try:
+                        all_params[field] = float(value)
+                        # Map aliases for consistency
+                        if field == 'blood_pressure':
+                            all_params['trestbps'] = float(value)
+                        elif field == 'trestbps':
+                            all_params['blood_pressure'] = float(value)
+                    except ValueError:
+                        pass
             
             # Get report history for trend analysis
             history = get_report_history_stack()

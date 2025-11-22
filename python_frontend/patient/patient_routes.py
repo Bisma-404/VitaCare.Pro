@@ -16,6 +16,7 @@ from database.models import (
     PatientReportDAO, PredictionDAO, ReportTestDAO, PatientProfileDAO
 )
 from predictions.prediction_engine import PredictionEngine
+from utils.mapping import DISEASE_CONFIG
 
 patient_bp = Blueprint('patient', __name__, url_prefix='/patient')
 
@@ -184,4 +185,71 @@ def medical_summary():
                          profile=profile,
                          reports=reports,
                          predictions=predictions)
+
+
+# ============================================================================
+# DISEASE DETECTION (Patient)
+# ============================================================================
+
+@patient_bp.route('/disease-detection', methods=['GET'])
+@patient_required
+def disease_selection():
+    """Render disease selection page for Patient."""
+    return render_template('patient/disease_selection.html')
+
+@patient_bp.route('/predict/<disease_type>', methods=['GET', 'POST'])
+@patient_required
+def predict_disease(disease_type):
+    """
+    Handle disease prediction for Patient.
+    GET: Render the input form.
+    POST: Process form data and show results.
+    """
+    if disease_type not in DISEASE_CONFIG:
+        flash('Invalid disease type', 'error')
+        return redirect(url_for('patient.disease_selection'))
+    
+    config = DISEASE_CONFIG[disease_type]
+    
+    if request.method == 'POST':
+        try:
+            # Extract features from form
+            form_data = request.form.to_dict()
+            
+            # Convert to appropriate types
+            test_data = {}
+            for field in config['fields']:
+                field_name = field['name']
+                value = form_data.get(field_name)
+                if value:
+                    try:
+                        test_data[field_name] = float(value)
+                    except ValueError:
+                        continue
+            
+            # Get symptoms (optional)
+            symptoms = [] 
+            
+            # Run prediction
+            result = prediction_engine.predict(test_data, symptoms, disease_type)
+            
+            # Render result
+            return render_template('patient/predict_result.html', 
+                                 prediction=result['prediction'],
+                                 outcome=config['outcome_labels'][result['prediction']],
+                                 remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
+                                 features=list(test_data.values()),
+                                 field_names=[f['label'] for f in config['fields']],
+                                 disease_name=config['name'],
+                                 disease_type=disease_type)
+                                 
+        except Exception as e:
+            flash(f'Prediction failed: {str(e)}', 'error')
+            return redirect(request.url)
+            
+    # GET request
+    return render_template('patient/predict_form.html', 
+                         disease_name=config['name'],
+                         fields=config['fields'],
+                         disease_type=disease_type)
 

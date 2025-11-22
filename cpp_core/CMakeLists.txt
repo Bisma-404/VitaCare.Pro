@@ -19,6 +19,7 @@ include_directories(Include ${Python_INCLUDE_DIRS})
 set(SOURCES
     src/decision_tree_simple.cpp
     src/dsa_structures.cpp
+    src/advanced_dsa.cpp
 )
 
 # Create library
@@ -35,7 +36,7 @@ list(APPEND CMAKE_PREFIX_PATH "${pybind11_CMAKE_DIR}")
 
 find_package(pybind11 CONFIG REQUIRED)
 
-pybind11_add_module(cpp_tree src/bindings.cpp src/decision_tree_simple.cpp src/dsa_structures.cpp)
+pybind11_add_module(cpp_tree src/bindings.cpp src/decision_tree_simple.cpp src/dsa_structures.cpp src/advanced_dsa.cpp)
 
 # Include directories for the module
 target_include_directories(cpp_tree PRIVATE Include)

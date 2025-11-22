@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Selection - Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <style>
+        /* Teal & black theme variables for this template */
+        :root { --accent: #008b8b; --accent-light: #30e3ca; --bg-main: #000; --bg-card: #0d0d0d; --text-main: #fff; --text-muted: #a7e0df; }
+    </style>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-main, #181B20);
+            color: var(--text-main, #FFF);
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--accent, #08D9D6);
+            margin: 0;
+        }
+
+        .back-btn {
+            color: var(--text-muted, #B8E2E7);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .card {
+            background: var(--bg-card, #22262E);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 6px 36px 0 rgba(8, 217, 214, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            color: var(--text-main, #FFF);
+            display: block;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border: 1px solid var(--accent, #08D9D6);
+        }
+
+        .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .card h3 {
+            color: var(--accent, #08D9D6);
+            margin: 10px 0;
+        }
+
+        .card p {
+            color: var(--text-muted, #B8E2E7);
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Admin header removed for cleaner admin panel (top navbar removed) -->
+    <header class="admin-header">
+        <div>
+            <h1>Disease Detection</h1>
+            <p class="muted">Run detection tools and manage models</p>
+        </div>
+    </header>
+    <style>
+        .admin-header{display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg-card,#0d0d0d);border-radius:10px;margin-bottom:18px}
+        .admin-header h1{margin:0;color:var(--accent,#008b8b);font-size:1.25rem}
+        .admin-header .muted{color:var(--text-muted,#a7e0df);font-size:0.9rem}
+    </style>
+    <div class="container">
+        <div class="header">
+            <h1>🩺 Select Disease to Predict</h1>
+        </div>
+
+        <div class="grid">
+            <a href="{{ url_for('admin.predict_disease', disease_type='diabetes') }}" class="card">
+                <div class="icon">🩸</div>
+                <h3>Diabetes</h3>
+                <p>Predict diabetes risk based on health metrics.</p>
+            </a>
+            <a href="{{ url_for('admin.predict_disease', disease_type='heart') }}" class="card">
+                <div class="icon">❤️</div>
+                <h3>Heart Disease</h3>
+                <p>Assess cardiovascular health and risk factors.</p>
+            </a>
+            <a href="{{ url_for('admin.predict_disease', disease_type='breast_cancer') }}" class="card">
+                <div class="icon">🎗️</div>
+                <h3>Breast Cancer</h3>
+                <p>Analyze cell features for malignancy prediction.</p>
+            </a>
+        </div>
+    </div>
+</body>
+
+</html>

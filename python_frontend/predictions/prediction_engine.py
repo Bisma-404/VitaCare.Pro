@@ -1,6 +1,7 @@
 """
 Prediction Engine integrating DSA rules and ML fallback.
 Uses DSA structures first, falls back to ML if inconclusive.
+Enhanced with advanced sorting and risk scoring algorithms.
 """
 
 import sys
@@ -22,14 +23,17 @@ from dsa_engine.linked_list import MedicalLinkedList
 from dsa_engine.trees import DecisionTree
 
 from database.models import DiseaseThresholdDAO, PatientReportDAO
-from utils.mapping import get_disease_config, extract_features_from_form
+from utils.mapping import get_disease_config
 
-# Import C++ tree module for ML fallback
+# Import C++ tree module for ML fallback and advanced DSA
 try:
     import cpp_tree
+    from cpp_tree import MedicalSorting, RiskScorer, RiskFactors, SymptomManager
+    CPP_AVAILABLE = True
 except ImportError:
-    print("Warning: cpp_tree module not found.")
+    print("Warning: cpp_tree module not fully available.")
     cpp_tree = None
+    CPP_AVAILABLE = False
 
 
 class PredictionEngine:
@@ -190,6 +194,70 @@ class PredictionEngine:
         """
         if cpp_tree is None:
             return None
+
+        def get_remarks(self, disease_type, prediction, features):
+            """Generate human-friendly remark text for a prediction.
+            Logic adapted from the Version 3 implementation to provide clearer
+            messages for diabetes, heart disease and breast cancer.
+            """
+            try:
+                # Build a name->value map using the fields order when possible
+                config = get_disease_config(disease_type)
+                name_map = {}
+                if config and 'fields' in config:
+                    for idx, field in enumerate(config['fields']):
+                        fname = field['name']
+                        if idx < len(features):
+                            name_map[fname] = features[idx]
+                # DIABETES
+                if disease_type == 'diabetes':
+                    glucose = float(name_map.get('glucose', 0)) if 'glucose' in name_map else (features[1] if len(features) > 1 else 0)
+                    bmi = float(name_map.get('bmi', 0)) if 'bmi' in name_map else (features[5] if len(features) > 5 else 0)
+                    if prediction == 1:
+                        if glucose > 170:
+                            return 'High diabetes risk and very elevated glucose! Please consult a doctor immediately.'
+                        elif bmi > 32:
+                            return 'High risk and high BMI detected. Talk with your doctor about weight management.'
+                        else:
+                            return 'High risk detected. Please consult a doctor soon for further assessment.'
+                    else:
+                        if glucose < 100:
+                            return 'No diabetes risk and healthy glucose. Keep it up!'
+                        else:
+                            return 'No diabetes risk detected. Maintain a healthy lifestyle!'
+
+                # HEART
+                if disease_type == 'heart':
+                    age = float(name_map.get('age', 0)) if 'age' in name_map else (features[0] if len(features) > 0 else 0)
+                    chol = float(name_map.get('chol', 0)) if 'chol' in name_map else (features[4] if len(features) > 4 else 0)
+                    if prediction == 1:
+                        if age > 60:
+                            return 'No heart disease, but your age suggests regular cardiac checkups.'
+                        else:
+                            return 'No heart disease detected. Keep a healthy routine.'
+                    else:
+                        if age > 60:
+                            return 'AT RISK: Cardiac danger in advanced age. Schedule a cardiology checkup!'
+                        elif chol > 240:
+                            return 'Warning: High cholesterol and cardiac risk detected. Seek medical attention promptly.'
+                        else:
+                            return 'Urgent: cardiac risk detected! Schedule a medical appointment now.'
+
+                # BREAST CANCER
+                if disease_type == 'breast_cancer':
+                    radius_mean = float(name_map.get('radius_mean', 0)) if 'radius_mean' in name_map else (features[0] if len(features) > 0 else 0)
+                    if prediction == 1:
+                        if radius_mean > 15:
+                            return 'Warning: Malignant, large suspicious mass detected. Urgent oncologist referral needed.'
+                        else:
+                            return 'Warning: suspicious malignant features detected. Please see your oncologist as soon as possible.'
+                    else:
+                        return 'Benign result. Routine screenings and vigilance are still recommended.'
+
+            except Exception:
+                pass
+
+            return 'Result interpretation is unavailable.'
         
         # Load model
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -214,7 +282,7 @@ class PredictionEngine:
             
             features = []
             defaults = {}
-            from webapp.ocr_utils import get_default_values
+            from ocr_utils import get_default_values
             defaults = get_default_values(disease_type)
             
             for field in config['fields']:
@@ -266,7 +334,56 @@ class PredictionEngine:
                         'dsa_result': dsa_result
                     }
         
-        return dsa_result
+        # Determine which result we will return (could be DSA or ML combined)
+        final_result = dsa_result
+
+        # If DSA confidence is low (< 60), use ML fallback
+        if dsa_result['confidence'] < 60:
+            ml_result = self.analyze_with_ml(test_data, disease_type)
+
+            if ml_result:
+                # Combine DSA and ML results
+                combined_confidence = (dsa_result['confidence'] * 0.4) + (ml_result['confidence'] * 0.6)
+
+                # Use ML prediction if confidence is significantly higher
+                if ml_result['confidence'] > dsa_result['confidence'] + 15:
+                    final_result = {
+                        **ml_result,
+                        'confidence': combined_confidence,
+                        'method': 'ML (DSA confidence too low)',
+                        'dsa_result': dsa_result
+                    }
+
+        # Build an ordered features list (matching disease config) to enable human-friendly remarks
+        try:
+            config = get_disease_config(disease_type)
+            from ocr_utils import get_default_values
+            defaults = get_default_values(disease_type)
+            features = []
+            if config and 'fields' in config:
+                for field in config['fields']:
+                    fname = field['name']
+                    val = test_data.get(fname)
+                    if val is None:
+                        val = defaults.get(fname, field.get('default', 0))
+                    try:
+                        features.append(float(val))
+                    except Exception:
+                        features.append(val)
+            else:
+                # Fallback: use values from test_data
+                features = list(test_data.values())
+        except Exception:
+            features = list(test_data.values())
+
+        # Attach a human-friendly remark based on disease-specific heuristics
+        try:
+            prediction_value = final_result.get('prediction', 0)
+            final_result['remark'] = self.get_remarks(disease_type, prediction_value, features)
+        except Exception:
+            final_result['remark'] = 'Based on the analysis of provided health metrics.'
+
+        return final_result
     
     def predict_all_diseases(self, test_data, symptoms):
         """
@@ -354,6 +471,108 @@ class PredictionEngine:
                         'trend': trend,
                         'symbol': symbol
                     }
-        
         return trends
+    
+    def rank_diseases_advanced(self, disease_scores):
+        """
+        Rank diseases using C++ MedicalSorting (QuickSort/MergeSort).
+        disease_scores: List of tuples [(disease_name, score), ...]
+        Returns: Sorted list by score (descending)
+        """
+        if not CPP_AVAILABLE or MedicalSorting is None:
+            # Fallback to Python sorting
+            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+        
+        try:
+            # Convert to format expected by C++ sorter
+            score_pairs = [(disease, float(score)) for disease, score in disease_scores]
+            
+            # Use C++ QuickSort for performance
+            sorted_scores = MedicalSorting.quick_sort_by_score(score_pairs, descending=True)
+            
+            return sorted_scores
+        except Exception as e:
+            print(f"Error in DSA sorting: {e}")
+            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+    
+    def calculate_composite_risk(self, disease_scores, symptom_weight=0.4, 
+                                frequency_weight=0.3, comorbidity_weight=0.2, 
+                                age_factor_weight=0.1):
+        """
+        Calculate composite risk score using C++ RiskScorer.
+        Applies multiple factors to rank diseases more accurately.
+        """
+        if not CPP_AVAILABLE or RiskScorer is None or RiskFactors is None:
+            # Fallback: simple weighted average
+            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+        
+        try:
+            # Create risk factors
+            factors = RiskFactors()
+            factors.symptom_weight = symptom_weight
+            factors.frequency_weight = frequency_weight
+            factors.comorbidity_weight = comorbidity_weight
+            factors.age_factor_weight = age_factor_weight
+            
+            # Convert to format expected by RiskScorer
+            score_pairs = [(disease, float(score)) for disease, score in disease_scores]
+            
+            # Get ranked results using composite scoring
+            ranked = RiskScorer.rank_diseases_by_risk(score_pairs, factors)
+            
+            return ranked
+        except Exception as e:
+            print(f"Error in composite risk calculation: {e}")
+            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+    
+    def extract_symptoms_from_db(self):
+        """
+        Extract all symptoms from database and load into C++ SymptomManager.
+        Used for fast symptom lookup and autocomplete.
+        """
+        if not CPP_AVAILABLE or SymptomManager is None:
+            return None
+        
+        try:
+            from database.db_connection import get_db_connection
+            
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get all unique symptoms
+            cursor.execute("""
+                SELECT DISTINCT symptom_name 
+                FROM symptoms 
+                ORDER BY symptom_name ASC
+            """)
+            
+            symptoms = [row['symptom_name'] for row in cursor.fetchall()]
+            cursor.close()
+            conn.close()
+            
+            # Initialize and load symptom manager
+            sym_manager = SymptomManager()
+            sym_manager.load_symptoms(symptoms)
+            
+            return sym_manager
+        except Exception as e:
+            print(f"Error loading symptoms: {e}")
+            return None
+    
+    def search_symptoms_fast(self, prefix):
+        """
+        Fast symptom search using DSA binary search.
+        """
+        if not CPP_AVAILABLE:
+            return []
+        
+        try:
+            sym_manager = self.extract_symptoms_from_db()
+            if sym_manager:
+                results = sym_manager.search_by_prefix(prefix)
+                return results
+        except Exception as e:
+            print(f"Error in symptom search: {e}")
+        
+        return []
 

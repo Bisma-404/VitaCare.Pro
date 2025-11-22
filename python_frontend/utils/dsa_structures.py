@@ -1,196 +1,317 @@
 """
 Data Structures and Algorithms implementations for medical analysis.
-Includes Stack, PriorityQueue, and MedicalHashMap for disease prediction system.
+Wrapper for C++ implementations via cpp_tree module.
 """
+
+import json
+from decimal import Decimal
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle Decimal types."""
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
+
+
+# Using-directive style imports - direct access to C++ classes
+try:
+    from cpp_tree import (
+        HashMap,
+        StringStack,
+        StringQueue,
+        PriorityQueue,
+        PriorityItem,
+        SymptomDiseaseGraph,
+        Set,
+        StringLinkedList
+    )
+    CPP_AVAILABLE = True
+except ImportError:
+    print("Warning: cpp_tree module not found. Using Python fallback.")
+    CPP_AVAILABLE = False
 
 
 class Stack:
-    """
-    Stack implementation to store patient's last N reports for trend analysis.
-    Uses LIFO (Last In First Out) principle.
-    """
+    """Wrapper for C++ Stack."""
     
     def __init__(self, max_size=5):
-        """Initialize stack with maximum size."""
-        self.items = []
-        self.max_size = max_size
+        if CPP_AVAILABLE:
+            self._stack = StringStack(max_size)
+        else:
+            self._items = []
+            self._max_size = max_size
     
     def push(self, item):
-        """Push item onto stack. Removes oldest if stack is full."""
-        self.items.append(item)
-        if len(self.items) > self.max_size:
-            self.items.pop(0)  # Remove oldest item
+        """Push item onto stack."""
+        if CPP_AVAILABLE:
+            self._stack.push(str(item))
+        else:
+            self._items.append(item)
+            if len(self._items) > self._max_size:
+                self._items.pop(0)
     
     def pop(self):
-        """Pop and return top item from stack."""
-        if self.is_empty():
-            return None
-        return self.items.pop()
+        """Pop and return top item."""
+        if CPP_AVAILABLE:
+            return self._stack.pop()
+        else:
+            return self._items.pop() if self._items else None
     
     def peek(self):
-        """Return top item without removing it."""
-        if self.is_empty():
-            return None
-        return self.items[-1]
+        """Get top item without removing."""
+        if CPP_AVAILABLE:
+            return self._stack.peek()
+        else:
+            return self._items[-1] if self._items else None
     
     def is_empty(self):
-        """Check if stack is empty."""
-        return len(self.items) == 0
+        """Check if empty."""
+        if CPP_AVAILABLE:
+            return self._stack.is_empty()
+        else:
+            return len(self._items) == 0
     
     def size(self):
-        """Return number of items in stack."""
-        return len(self.items)
-    
-    def get_all(self):
-        """Get all items in stack (oldest to newest)."""
-        return self.items.copy()
+        """Get number of items."""
+        if CPP_AVAILABLE:
+            return self._stack.size()
+        else:
+            return len(self._items)
     
     def clear(self):
-        """Clear all items from stack."""
-        self.items = []
+        """Clear all items."""
+        if CPP_AVAILABLE:
+            self._stack.clear()
+        else:
+            self._items = []
+    
+    def get_all(self):
+        """Get all items."""
+        if CPP_AVAILABLE:
+            return self._stack.get_all()
+        else:
+            return self._items.copy()
+
+
+class Queue:
+    """Wrapper for C++ Queue."""
+    
+    def __init__(self):
+        if CPP_AVAILABLE:
+            self._queue = StringQueue()
+        else:
+            self._items = []
+    
+    def enqueue(self, item):
+        """Add item to queue."""
+        if CPP_AVAILABLE:
+            self._queue.enqueue(str(item))
+        else:
+            self._items.append(item)
+    
+    def dequeue(self):
+        """Remove and return front item."""
+        if CPP_AVAILABLE:
+            return self._queue.dequeue()
+        else:
+            return self._items.pop(0) if self._items else None
+    
+    def peek(self):
+        """Get front item without removing."""
+        if CPP_AVAILABLE:
+            return self._queue.peek()
+        else:
+            return self._items[0] if self._items else None
+    
+    def is_empty(self):
+        """Check if empty."""
+        if CPP_AVAILABLE:
+            return self._queue.is_empty()
+        else:
+            return len(self._items) == 0
+    
+    def size(self):
+        """Get number of items."""
+        if CPP_AVAILABLE:
+            return self._queue.size()
+        else:
+            return len(self._items)
+    
+    def clear(self):
+        """Clear all items."""
+        if CPP_AVAILABLE:
+            self._queue.clear()
+        else:
+            self._items = []
 
 
 class PriorityQueue:
-    """
-    Priority Queue implementation to rank diseases by risk score.
-    Higher priority (risk score) items are dequeued first.
-    """
+    """Wrapper for C++ PriorityQueue."""
     
-    def __init__(self):
-        """Initialize priority queue."""
-        self.items = []
+    def __init__(self, max_heap=True):
+        if CPP_AVAILABLE:
+            self._pq = PriorityQueue(max_heap)
+        else:
+            self._items = []
+            self._max_heap = max_heap
     
     def enqueue(self, item, priority):
-        """
-        Add item to queue with priority.
-        Priority: higher number = higher risk = dequeued first.
-        """
-        self.items.append((priority, item))
-        # Sort by priority (descending - highest risk first)
-        self.items.sort(key=lambda x: x[0], reverse=True)
+        """Add item with priority."""
+        if CPP_AVAILABLE:
+            # Create PriorityItem from the item dictionary
+            priority_item = PriorityItem(
+                item.get('disease_type', ''),
+                item.get('disease_name', ''),
+                item.get('prediction', 0),
+                float(priority),
+                item.get('risk_level', '')
+            )
+            self._pq.enqueue(priority_item)
+        else:
+            self._items.append((priority, item))
+            self._items.sort(key=lambda x: x[0], reverse=self._max_heap)
     
     def dequeue(self):
         """Remove and return highest priority item."""
-        if self.is_empty():
-            return None
-        return self.items.pop(0)[1]  # Return item (not priority)
+        if CPP_AVAILABLE:
+            item = self._pq.dequeue()
+            return {
+                'disease_type': item.disease_type,
+                'disease_name': item.disease_name,
+                'prediction': item.prediction,
+                'risk_score': item.risk_score,
+                'risk_level': item.risk_level
+            }
+        else:
+            return self._items.pop(0)[1] if self._items else None
     
     def peek(self):
-        """Return highest priority item without removing it."""
-        if self.is_empty():
-            return None
-        return self.items[0][1]
+        """Get highest priority item without removing."""
+        if CPP_AVAILABLE:
+            item = self._pq.peek()
+            return {
+                'disease_type': item.disease_type,
+                'disease_name': item.disease_name,
+                'prediction': item.prediction,
+                'risk_score': item.risk_score,
+                'risk_level': item.risk_level
+            }
+        else:
+            return self._items[0][1] if self._items else None
     
     def is_empty(self):
-        """Check if queue is empty."""
-        return len(self.items) == 0
+        """Check if empty."""
+        if CPP_AVAILABLE:
+            return self._pq.is_empty()
+        else:
+            return len(self._items) == 0
     
     def size(self):
-        """Return number of items in queue."""
-        return len(self.items)
-    
-    def get_all(self):
-        """Get all items sorted by priority (highest first)."""
-        return [(priority, item) for priority, item in self.items]
+        """Get number of items."""
+        if CPP_AVAILABLE:
+            return self._pq.size()
+        else:
+            return len(self._items)
     
     def clear(self):
-        """Clear all items from queue."""
-        self.items = []
+        """Clear all items."""
+        if CPP_AVAILABLE:
+            self._pq.clear()
+        else:
+            self._items = []
+            
+    def get_all(self):
+        """Get all items."""
+        if CPP_AVAILABLE:
+            # C++ returns vector of PriorityItem
+            items = self._pq.get_all()
+            result = []
+            for item in items:
+                result.append((item.risk_score, {
+                    'disease_type': item.disease_type,
+                    'disease_name': item.disease_name,
+                    'prediction': item.prediction,
+                    'risk_score': item.risk_score,
+                    'risk_level': item.risk_level
+                }))
+            return result
+        else:
+            return self._items.copy()
 
 
 class MedicalHashMap:
-    """
-    Hash Map implementation for medical term and symptom-disease mappings.
-    Provides O(1) average case lookup time.
-    """
+    """Wrapper for C++ HashMap with JSON serialization support."""
     
     def __init__(self, initial_capacity=16):
-        """Initialize hash map with initial capacity."""
-        self.capacity = initial_capacity
-        self.buckets = [[] for _ in range(self.capacity)]
-        self.size = 0
-    
-    def _hash(self, key):
-        """Generate hash value for key."""
-        if isinstance(key, str):
-            # Simple hash function for strings
-            hash_value = 0
-            for char in key.lower():
-                hash_value = (hash_value * 31 + ord(char)) % self.capacity
-            return hash_value
-        return hash(key) % self.capacity
+        if CPP_AVAILABLE:
+            self._map = HashMap()
+        else:
+            self._map = {}
     
     def put(self, key, value):
         """Insert or update key-value pair."""
-        index = self._hash(key)
-        bucket = self.buckets[index]
-        
-        # Check if key already exists
-        for i, (k, v) in enumerate(bucket):
-            if k == key:
-                bucket[i] = (key, value)
-                return
-        
-        # Add new key-value pair
-        bucket.append((key, value))
-        self.size += 1
-        
-        # Resize if load factor > 0.75
-        if self.size > self.capacity * 0.75:
-            self._resize()
+        if CPP_AVAILABLE:
+            str_key = str(key)
+            # Convert value to string - if it's a dict or list, use JSON
+            if isinstance(value, (dict, list)):
+                str_value = json.dumps(value, cls=DecimalEncoder)
+            else:
+                str_value = str(value)
+            self._map.put(str_key, str_value)
+        else:
+            self._map[key] = value
     
     def get(self, key, default=None):
-        """Get value for key, return default if not found."""
-        index = self._hash(key)
-        bucket = self.buckets[index]
-        
-        for k, v in bucket:
-            if k == key:
-                return v
-        
-        return default
+        """Get value for key."""
+        if CPP_AVAILABLE:
+            result = self._map.get(str(key), "")
+            if not result:
+                return default
+            
+            # Try to deserialize if it looks like JSON
+            if result.startswith(('{', '[')):
+                try:
+                    return json.loads(result)
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            
+            return result
+        else:
+            return self._map.get(key, default)
     
     def contains(self, key):
-        """Check if key exists in map."""
-        return self.get(key) is not None
-    
-    def _resize(self):
-        """Double capacity and rehash all items."""
-        old_buckets = self.buckets
-        self.capacity *= 2
-        self.buckets = [[] for _ in range(self.capacity)]
-        self.size = 0
-        
-        for bucket in old_buckets:
-            for key, value in bucket:
-                self.put(key, value)
-    
-    def keys(self):
-        """Get all keys in the map."""
-        keys_list = []
-        for bucket in self.buckets:
-            for key, value in bucket:
-                keys_list.append(key)
-        return keys_list
-    
-    def values(self):
-        """Get all values in the map."""
-        values_list = []
-        for bucket in self.buckets:
-            for key, value in bucket:
-                values_list.append(value)
-        return values_list
-    
-    def items(self):
-        """Get all key-value pairs in the map."""
-        items_list = []
-        for bucket in self.buckets:
-            for key, value in bucket:
-                items_list.append((key, value))
-        return items_list
+        """Check if key exists."""
+        if CPP_AVAILABLE:
+            return self._map.contains(str(key))
+        else:
+            return key in self._map
     
     def clear(self):
-        """Clear all items from map."""
-        self.buckets = [[] for _ in range(self.capacity)]
-        self.size = 0
-
+        """Clear all items."""
+        if CPP_AVAILABLE:
+            self._map.clear()
+        else:
+            self._map = {}
+    
+    def size(self):
+        """Get number of items."""
+        if CPP_AVAILABLE:
+            return self._map.size()
+        else:
+            return len(self._map)
+    
+    def keys(self):
+        """Get all keys."""
+        if CPP_AVAILABLE:
+            return self._map.keys()
+        else:
+            return list(self._map.keys())
+            
+    def values(self):
+        """Get all values."""
+        if CPP_AVAILABLE:
+            return self._map.values()
+        else:
+            return list(self._map.values())

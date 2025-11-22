@@ -70,7 +70,10 @@ def login():
         )
         
         # Redirect based on user type
-        if user_type == 'staff':
+        if user['role'] == 'ADMIN':
+            flash(f'Welcome Admin, {user["name"]}!', 'success')
+            return redirect(url_for('admin.dashboard'))
+        elif user_type == 'staff':
             flash(f'Welcome, {user["name"]}!', 'success')
             return redirect(url_for('staff.dashboard'))
         else:

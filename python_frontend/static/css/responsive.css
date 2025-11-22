@@ -1,0 +1,53 @@
+/* Responsive shared styles for VitaCare Pro
+   This file augments existing inline styles to improve mobile/tablet layouts.
+   It uses moderate specificity and some !important rules to override inline styles when needed.
+*/
+:root{
+  --vc-container-max:1200px;
+}
+/* Layout adjustments */
+.container{max-width:var(--vc-container-max);margin:0 auto;padding:16px;box-sizing:border-box}
+.nav-bar{padding:14px 10px;font-size:1.05rem}
+.nav-links{left:10px}
+.theme-switcher{right:10px}
+
+/* Grids */
+.stats-grid, .actions-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.actions-grid .action-btn{padding:14px 18px;font-size:0.95rem}
+
+/* Tables remain horizontally scrollable on small screens */
+.table-container{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th, td{padding:12px}
+.btn-action{white-space:nowrap}
+
+/* Mobile specific */
+@media (max-width: 800px){
+  .welcome-section{padding:18px}
+  .reports-section{padding:18px}
+  .stat-card{padding:18px}
+  .nav-bar{font-size:1rem;padding:12px}
+  .nav-bar .nav-links span{display:none}
+  .nav-links a{font-size:0.85rem}
+  .action-btn{padding:12px}
+  .stat-card .stat-value{font-size:1.8rem}
+  .welcome-section h1{font-size:1.4rem}
+}
+
+@media (max-width: 480px){
+  body, .container{padding:12px}
+  .login-card{padding:20px !important}
+  .login-header h1{font-size:1.6rem}
+  .action-btn{font-size:0.92rem;padding:10px}
+  .stat-card .stat-value{font-size:1.4rem}
+  .table-container th, .table-container td{padding:10px}
+  .btn-action{display:inline-block;padding:8px 10px;font-size:0.85rem}
+}
+
+/* Improve tap targets on mobile */
+.action-btn, .btn-action, .theme-switcher{touch-action:manipulation}
+
+/* Accessibility: ensure sufficient contrast for small text */
+@media (prefers-color-scheme: light){
+  :root{--bg-main:#fcfeff}
+}
