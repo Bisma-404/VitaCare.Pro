@@ -203,84 +203,77 @@ def analyze_trends(current_params, history):
 
 
 def run_all_disease_models(all_params, symptoms_list):
-    """
-    Run all three disease models simultaneously.
-    Returns list of results with predictions and risk scores.
+    """Run all disease models and return a list of result dictionaries.
+
+    Each result contains prediction, risk score, risk level, and related metadata.
     """
     results = []
     disease_types = ['diabetes', 'heart', 'breast_cancer']
-    
+
     for disease_type in disease_types:
         try:
-            # Load model
+            # Load the trained model for this disease
             model = load_model(disease_type)
             if model is None:
                 continue
-            
-            # Get disease config
+
+            # Retrieve disease configuration (fields, outcome labels, etc.)
             config = get_disease_config(disease_type)
             if not config:
                 continue
-            
-            # Extract features for this disease
+
+            # Build feature vector for the model
             features = []
             defaults = get_default_values(disease_type)
-            
             for field in config['fields']:
                 field_name = field['name']
-                # Try to get from extracted params
+                # Prefer explicit parameter, fall back to normalized name, then defaults
                 value = all_params.get(field_name)
                 if value is None:
-                    # Try normalized name
                     normalized = normalize_parameter_name(field_name)
                     value = all_params.get(normalized)
                 if value is None:
-                    # Use default
                     value = defaults.get(field_name, field.get('default', 0))
-                
                 features.append(float(value))
-            
-            # Make prediction
+
+            # Make prediction using the model
             prediction = model.predict(features)
             outcome_label = config['outcome_labels'].get(prediction, 'Unknown')
-            
-            # Check symptom correlation
-            symptom_match = False
-            for symptom in symptoms_list:
-                diseases = get_diseases_for_symptom(symptom)
-                if disease_type in diseases:
-                    symptom_match = True
-                    break
-            
-            # Check for abnormal values
+
+            # Determine if any provided symptom matches this disease
+            symptom_match = any(
+                disease_type in get_diseases_for_symptom(symptom) for symptom in symptoms_list
+            )
+
+            # Detect abnormal parameter values
             abnormal_values = False
-            for field in config['fields']:
+            for idx, field in enumerate(config['fields']):
                 field_name = field['name']
-                value = features[config['fields'].index(field)]
-                is_normal, _ = is_parameter_normal(field_name, value)
+                val = features[idx]
+                is_normal, _ = is_parameter_normal(field_name, val)
                 if is_normal is False:
                     abnormal_values = True
                     break
-            
-            # Calculate risk score
+
+            # Compute risk score using the shared utility
             confidence_factors = {
                 'symptom_match': symptom_match,
                 'abnormal_values': abnormal_values,
-                'trend_worsening': False  # Will be updated with trend analysis
+                'trend_worsening': False  # Updated later based on trend analysis
             }
             risk_score = calculate_risk_score(prediction, confidence_factors)
-            
-            # Determine risk level
-            if risk_score >= 70:
+
+            # Map risk score to human‑readable level and emoji
+            if risk_score >= 50:
                 risk_level = "CRITICAL"
                 risk_emoji = "🔴"
-            elif risk_score >= 40:
+            elif risk_score >= 30:
                 risk_level = "MEDIUM"
                 risk_emoji = "🟡"
             else:
                 risk_level = "LOW"
                 risk_emoji = "🟢"
-            
+
             results.append({
                 'disease_type': disease_type,
                 'disease_name': config['name'],
@@ -294,39 +287,10 @@ def run_all_disease_models(all_params, symptoms_list):
                 'abnormal_values': abnormal_values,
                 'field_names': [f['label'] for f in config['fields']]
             })
-            
         except Exception as e:
             print(f"Error running model for {disease_type}: {e}")
             continue
-    
     return results
-
-
-def rank_results_by_priority(results, trends):
-    """
-    Rank disease results by risk priority using PriorityQueue.
-    Returns sorted list (highest risk first).
-    """
-    pq = PriorityQueue()
-    
-    for result in results:
-        # Adjust risk score based on trends
-        risk_score = result['risk_score']
-        
-        # Check if any relevant parameters are worsening
-        for param_name, trend_data in trends.items():
-            if trend_data['trend'] == 'increasing' and result.get('abnormal_values'):
-                risk_score += 5  # Slight increase for worsening trends
-        
-        # Enqueue with risk score as priority
-        pq.enqueue(result, risk_score)
-    
-    # Dequeue all items (already sorted by priority)
-    ranked_results = []
-    while not pq.is_empty():
-        ranked_results.append(pq.dequeue())
-    
-    return ranked_results
 
 
 @general_analysis_bp.route('/general-analysis', methods=['GET', 'POST'])

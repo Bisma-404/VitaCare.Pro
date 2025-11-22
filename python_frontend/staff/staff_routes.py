@@ -700,15 +700,24 @@ def predict_disease(disease_type):
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
             
+            # Fallback to dsa_result if ML replaced top-level keys
+            dsa_sub = result.get('dsa_result', {})
+            template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
+            template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
+            template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
+
             # Render result
             return render_template('staff/predict_result.html', 
-                                 prediction=result['prediction'],
-                                 outcome=config['outcome_labels'][result['prediction']],
+                                 prediction=result.get('prediction', 0),
+                                 outcome=config['outcome_labels'].get(result.get('prediction', 0), ''),
                                  remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
                                  features=features,
                                  field_names=[f['label'] for f in config['fields']],
                                  disease_name=config['name'],
-                                 disease_type=disease_type)
+                                 disease_type=disease_type,
+                                 threshold_violations=template_thresholds,
+                                 symptom_matches=template_symptoms,
+                                 risk_score=template_risk)
                                   
         except Exception as e:
             flash(f'Prediction failed: {str(e)}', 'error')
@@ -773,15 +782,24 @@ def ocr_review(disease_type):
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
             
+            # Fallback to dsa_result if ML replaced top-level keys
+            dsa_sub = result.get('dsa_result', {})
+            template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
+            template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
+            template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
+
             # Render result
             return render_template('staff/predict_result.html', 
-                                 prediction=result['prediction'],
-                                 outcome=config['outcome_labels'][result['prediction']],
+                                 prediction=result.get('prediction', 0),
+                                 outcome=config['outcome_labels'].get(result.get('prediction', 0), ''),
                                  remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
                                  features=features,
                                  field_names=[f['label'] for f in config['fields']],
                                  disease_name=config['name'],
-                                 disease_type=disease_type)
+                                 disease_type=disease_type,
+                                 threshold_violations=template_thresholds,
+                                 symptom_matches=template_symptoms,
+                                 risk_score=template_risk)
         except Exception as e:
             flash(f'Prediction failed: {str(e)}', 'error')
             return redirect(url_for('staff.predict_disease', disease_type=disease_type))

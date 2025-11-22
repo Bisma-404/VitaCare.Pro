@@ -141,16 +141,32 @@
         <div class="card result-card-inline" style="max-width:900px;margin:0 auto;">
             <h1>{{ disease_name }} Result</h1>
 
-            <div class="result-badge {% if prediction == 1 %}positive{% else %}negative{% endif %}">
-                {% if prediction == 1 %}
-                ⚠️ High Risk Detected
-                {% else %}
-                ✅ Low Risk / Normal
-                {% endif %}
-            </div>
+            {% set risk = risk_score|default(0) %}
+            {% if risk >= 50 %}
+            <div class="result-badge positive">⚠️ High Risk Detected</div>
+            {% elif risk >= 30 %}
+            <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
+            {% else %}
+            <div class="result-badge negative">✅ Low Risk / Normal</div>
+            {% endif %}
 
             <p style="font-size: 1.2em;">{{ outcome }}</p>
-            <p>{{ remark }}</p>
+            <p>{{ remark|default('Based on the analysis of provided health metrics.')|truncate(140) }}</p>
+
+            {# Concise detection summary: only display when there are detections/risk #}
+            {% set violations = threshold_violations|default([]) %}
+            {% set symptom_count = symptom_matches|default(0) %}
+            {% set risk = risk_score|default(0) %}
+            {% if (violations and violations|length > 0) or symptom_count|int > 0 or risk|int > 0 %}
+            <div style="margin-top:12px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.03);display:inline-block;">
+                <small style="color:var(--text-muted,#a7e0df);">
+                    Detected: <strong style="color:var(--text-main,#fff);">{{ violations|length }}</strong> threshold
+                    violation{{ 's' if violations|length != 1 else '' }},
+                    <strong style="color:var(--text-main,#fff);">{{ symptom_count }}</strong> symptom match{{ 'es' if symptom_count != 1 else '' }}
+                    — Risk score: <strong style="color:var(--accent,#08D9D6);">{{ risk }}</strong>
+                </small>
+            </div>
+            {% endif %}
 
             <div class="details">
                 <h3>Input Data</h3>

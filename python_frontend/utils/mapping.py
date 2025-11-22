@@ -83,7 +83,7 @@ DISEASE_CONFIG = {
         'description': 'Predicts presence of heart disease based on cardiac health indicators',
         'fields': HEART_FIELDS,
         'columns': HEART_COLUMNS,
-        'outcome_labels': {0: 'Disease Present', 1: 'No Disease'},
+        'outcome_labels': {0: 'No Disease', 1: 'Disease Present'},
         'dataset': 'heart.csv',
         'target_column': 'target'
     },

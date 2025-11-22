@@ -121,7 +121,7 @@ class PredictionEngine:
                         'value': value,
                         'normal_range': f"{min_val}-{max_val}"
                     })
-                    risk_score += 20
+                    risk_score += 25  # Increased from 20 for more sensitivity
         
         # Check symptom correlations using graph
         symptom_matches = 0
@@ -133,7 +133,7 @@ class PredictionEngine:
             diseases = self.symptom_graph.get_diseases_for_symptom(symptom)
             if disease_type in diseases:
                 symptom_matches += 1
-                risk_score += 15
+                risk_score += 20  # Increased from 15 for more sensitivity
         
         # Apply decision tree rules
         decision = self._apply_decision_tree(test_data, disease_type)
@@ -144,12 +144,12 @@ class PredictionEngine:
         result = 0  # Low risk
         confidence = 0
         
-        if risk_score >= 70:
+        if risk_score >= 50:  # Lowered from 70 for more sensitivity
             result = 1  # High risk
-            confidence = min(95, risk_score)
-        elif risk_score >= 40:
+            confidence = min(95, risk_score + 10)
+        elif risk_score >= 30:  # Lowered from 40 for more sensitivity
             result = 1  # Medium-high risk
-            confidence = risk_score
+            confidence = risk_score + 10
         else:
             result = 0  # Low risk
             confidence = 100 - risk_score
@@ -230,12 +230,12 @@ class PredictionEngine:
                 if disease_type == 'heart':
                     age = float(name_map.get('age', 0)) if 'age' in name_map else (features[0] if len(features) > 0 else 0)
                     chol = float(name_map.get('chol', 0)) if 'chol' in name_map else (features[4] if len(features) > 4 else 0)
-                    if prediction == 1:
+                    if prediction == 0:  # No Disease (fixed from prediction == 1)
                         if age > 60:
                             return 'No heart disease, but your age suggests regular cardiac checkups.'
                         else:
                             return 'No heart disease detected. Keep a healthy routine.'
-                    else:
+                    else:  # prediction == 1: Disease Present (fixed from else)
                         if age > 60:
                             return 'AT RISK: Cardiac danger in advanced age. Schedule a cardiology checkup!'
                         elif chol > 240:
