@@ -702,8 +702,8 @@ def predict_disease(disease_type):
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
             
-            # Render result
-            return render_template('admin/predict_result.html', 
+            # Render result template to a string so we can return it directly
+            rendered = render_template('admin/predict_result.html', 
                                  prediction=result['prediction'],
                                  outcome=config['outcome_labels'][result['prediction']],
                                  remark=result.get('remark', 'Based on the analysis of provided health metrics.'),
@@ -711,6 +711,13 @@ def predict_disease(disease_type):
                                  field_names=[f['label'] for f in config['fields']],
                                  disease_name=config['name'],
                                  disease_type=disease_type)
+
+            # If this is an AJAX request, return the rendered HTML as JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'html': rendered})
+
+            # Otherwise, return a full page render (standard flow)
+            return rendered
                                   
         except Exception as e:
             print(f"[ERROR] Prediction failed: {str(e)}")

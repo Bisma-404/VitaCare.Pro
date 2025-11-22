@@ -290,6 +290,9 @@
                 <button type="submit">🔬 Run Prediction</button>
             </form>
 
+            <!-- Inline result container (will be filled by AJAX) -->
+            <div id="predictionResultContainer" style="margin-top:20px; display:none;"></div>
+
             <a href="{{ url_for('admin.disease_selection') }}" class="back-link">← Back to Selection</a>
         </div>
     </div>
@@ -345,6 +348,53 @@
                 handleFileSelect(document.getElementById('report_file'));
             }
         });
+
+    // Intercept form submit and POST via fetch to display result inline
+    document.getElementById('predictionForm').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        const form = ev.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const resultContainer = document.getElementById('predictionResultContainer');
+
+        // Show loading state
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Running...';
+
+        try {
+            const url = window.location.pathname;
+            const fd = new FormData(form);
+
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: fd
+            });
+
+            if (!resp.ok) throw new Error('Server returned ' + resp.status);
+
+            const data = await resp.json();
+
+            if (data && data.html) {
+                resultContainer.style.display = 'block';
+                resultContainer.innerHTML = data.html;
+                // Scroll into view
+                resultContainer.scrollIntoView({behavior: 'smooth'});
+            } else {
+                resultContainer.style.display = 'block';
+                resultContainer.innerText = 'No result returned';
+            }
+
+        } catch (err) {
+            console.error('Prediction error', err);
+            alert('Prediction failed: ' + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
     </script>
 </body>
 
