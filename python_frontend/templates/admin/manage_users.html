@@ -189,7 +189,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
             z-index: 9999;
             align-items: center;
             justify-content: center;
@@ -202,9 +203,20 @@
         .modal-content {
             background: var(--bg-card);
             padding: 32px;
-            border-radius: 12px;
+            border-radius: 16px;
             max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(8, 217, 214, 0.2);
             animation: fadeInUp 0.3s ease;
+        }
+
+        .modal-content h2 {
+            color: var(--accent);
+            margin: 0 0 20px 0;
+            font-size: 1.5em;
         }
 
         .form-group {
@@ -215,17 +227,37 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
+            color: var(--accent);
         }
 
         .form-group input,
         .form-group select {
             width: 100%;
             padding: 12px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(8, 217, 214, 0.3);
             border-radius: 8px;
             font-size: 14px;
             background: var(--bg-main);
             color: var(--text-main);
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @media (max-width: 800px) {
@@ -354,41 +386,49 @@
     </div>
 
     <!-- Add User Modal -->
-    <div id="addUserModal" class="modal">
+    <div id="addUserModal" class="modal" onclick="if(event.target === this) closeAddUserModal()">
         <div class="modal-content">
-            <h2>Add New User</h2>
-            <form id="addUserForm" style="margin-top: 20px;">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" required>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">👤 Add New User</h2>
+                <button onclick="closeAddUserModal()" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <form id="addUserForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>👤 Username *</label>
+                        <input type="text" name="username" required placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>📧 Email *</label>
+                        <input type="email" name="email" required placeholder="user@example.com">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="email" required>
+                    <label>🔒 Password *</label>
+                    <input type="password" name="password" required placeholder="Enter password" minlength="6">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>🎭 Role *</label>
+                        <select name="role" required>
+                            <option value="">-- Select Role --</option>
+                            <option value="doctor">👨‍⚕️ Doctor</option>
+                            <option value="lab_tech">🔬 Lab Technician</option>
+                            <option value="patient">🧑‍🦱 Patient</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📱 Phone Number</label>
+                        <input type="tel" name="phone_number" placeholder="+1234567890">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" required>
+                    <label>✍️ Full Name *</label>
+                    <input type="text" name="name" required placeholder="Enter full name">
                 </div>
-                <div class="form-group">
-                    <label>Role</label>
-                    <select name="role" required>
-                        <option value="doctor">Doctor</option>
-                        <option value="lab_tech">Lab Technician</option>
-                        <option value="patient">Patient</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label>Phone Number (Optional)</label>
-                    <input type="text" name="phone_number">
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px;">
                     <button type="button" class="btn" onclick="closeAddUserModal()" style="background: var(--disabled); color: var(--text-main);">Cancel</button>
-                    <button type="submit" class="btn">Add User</button>
+                    <button type="submit" class="btn" style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);">✅ Add User</button>
                 </div>
             </form>
         </div>

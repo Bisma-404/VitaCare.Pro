@@ -8,10 +8,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <style>
-        /* Teal & black theme variables for this template */
-        :root { --accent: #008b8b; --accent-light: #30e3ca; --bg-main: #000; --bg-card: #0d0d0d; --text-main: #fff; --text-muted: #a7e0df; }
-    </style>
-    <style>
+        :root {
+            --bg-main: #181B20;
+            --bg-card: #22262E;
+            --nav-bg: #171A1F;
+            --accent: #08D9D6;
+            --accent-light: #2CE7DD;
+            --text-main: #FFFFFF;
+            --text-muted: #B8E2E7;
+        }
+
+        html.light {
+            --bg-main: #e8f4f5;
+            --bg-card: #f5fafa;
+            --nav-bg: #d0e9ea;
+            --accent: #047a7a;
+            --accent-light: #059494;
+            --text-main: #0a1a1a;
+            --text-muted: #2a3a3a;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg-main, #181B20);
@@ -97,8 +113,16 @@
         .admin-header .muted{color:var(--text-muted,#a7e0df);font-size:0.9rem}
     </style>
     <div class="container">
-        <div class="header">
-            <h1>🩺 Select Disease to Predict</h1>
+        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="margin: 0; color: var(--accent); font-size: 1.8em;">🩺 Disease Detection</h1>
+                    <p style="margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9em;">Select a disease to run predictions</p>
+                </div>
+                <a href="{{ url_for('admin.dashboard') }}" style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s ease; display: inline-block;">
+                    ← Back to Dashboard
+                </a>
+            </div>
         </div>
 
         <div class="grid">

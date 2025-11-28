@@ -7,14 +7,13 @@
     <title>Symptoms Management - VitaCare Pro Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- per-template inline styling used; centralized modern.css removed -->
-    <style>:root{--accent:#008b8b;--accent-light:#30e3ca;--bg-main:#000;--bg-card:#0d0d0d;--text-main:#fff;--text-muted:#a7e0df;}</style>
     <style>
         :root {
             --bg-main: #181B20;
             --bg-card: #22262E;
             --nav-bg: #171A1F;
             --accent: #08D9D6;
-            --accent-light: #30E3CA;
+            --accent-light: #2CE7DD;
             --card-title: #08D9D6;
             --disabled: #444A55;
             --text-main: #FFFFFF;
@@ -23,15 +22,15 @@
         }
 
         html.light {
-            --bg-main: #fcfeff;
-            --bg-card: #FFFFFF;
-            --nav-bg: #F6FEFB;
-            --accent: #059494;
-            --accent-light: #18c0ce;
-            --card-title: #0EBABA;
-            --disabled: #CFD9DE;
-            --text-main: #1A232E;
-            --text-muted: #455664;
+            --bg-main: #e8f4f5;
+            --bg-card: #f5fafa;
+            --nav-bg: #d0e9ea;
+            --accent: #047a7a;
+            --accent-light: #059494;
+            --card-title: #035858;
+            --disabled: #c0d0d0;
+            --text-main: #0a1a1a;
+            --text-muted: #2a3a3a;
             --shadow: 0 10px 30px 0 #18c0ce1e;
         }
 
@@ -312,18 +311,43 @@
             <div class="search-section">
                 <h2 style="font-size: 18px; margin-bottom: 15px;">Search Symptoms (Using DSA)</h2>
                 <div class="search-box">
-                    <input type="text" id="symptomSearch" placeholder="Type to search...">
-                    <th>Symptom Name</th>
-                    <th style="text-align: center;">Actions</th>
-                    </tr>
+                    <input type="text" id="symptomSearch" placeholder="Type to search symptoms..." onkeyup="searchSymptoms()">
+                    <button class="btn" onclick="searchSymptoms()">Search</button>
+                </div>
+                <div id="searchResults" style="margin: 15px 0; padding: 15px; background: var(--bg-card); border-radius: 8px; min-height: 40px; color: var(--text-muted);"></div>
+            </div>
+
+            <!-- Symptoms Table -->
+            <div style="margin-top: 30px;">
+                <h2 style="font-size: 18px; margin-bottom: 15px;">All Symptoms</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Symptom Name</th>
+                            <th style="text-align: center;">Disease Category</th>
+                            <th style="text-align: center;">Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% if not error %}
                         {% for symptom in symptoms[:50] %}
                         <tr>
-                            <td>{{ symptom }}</td>
+                            <td>{{ symptom.symptom_name if symptom is mapping else symptom }}</td>
                             <td style="text-align: center;">
-                                <button class="action-btn" onclick="deleteSymptom('{{ symptom }}')">Delete</button>
+                                {% if symptom is mapping and symptom.disease_category %}
+                                <span style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; 
+                                    {% if symptom.disease_category == 'diabetes' %}background: rgba(245, 158, 11, 0.2); color: #f59e0b;
+                                    {% elif symptom.disease_category == 'heart' %}background: rgba(239, 68, 68, 0.2); color: #ef4444;
+                                    {% elif symptom.disease_category == 'breast_cancer' %}background: rgba(236, 72, 153, 0.2); color: #ec4899;
+                                    {% else %}background: rgba(8, 217, 214, 0.2); color: var(--accent);{% endif %}">
+                                    {{ symptom.disease_category|replace('_', ' ')|title }}
+                                </span>
+                                {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85em;">Not specified</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <button class="action-btn" onclick="deleteSymptom('{{ symptom.symptom_name if symptom is mapping else symptom }}')">Delete</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -335,8 +359,7 @@
                         </tr>
                         {% endif %}
                     </tbody>
-                    </table>
-                </div>
+                </table>
             </div>
 
             <!-- Add Symptom Modal -->
@@ -346,11 +369,21 @@
                     <form id="addSymptomForm" style="margin-top: 20px;">
                         <div class="form-group">
                             <label>Symptom Name</label>
-                            <input type="text" name="symptom_name" required>
+                            <input type="text" name="symptom_name" required placeholder="e.g., Chest Pain, Fatigue">
+                        </div>
+                        <div class="form-group">
+                            <label>Disease Category</label>
+                            <select name="disease_category" required style="width: 100%; padding: 12px; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; font-size: 14px; background: var(--bg-main); color: var(--text-main);">
+                                <option value="">-- Select Disease Type --</option>
+                                <option value="diabetes">Diabetes</option>
+                                <option value="heart">Heart Disease</option>
+                                <option value="breast_cancer">Breast Cancer</option>
+                                <option value="general">General / Multiple Diseases</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Description (Optional)</label>
-                            <textarea name="description" rows="4" style="resize: vertical;"></textarea>
+                            <textarea name="description" rows="4" style="resize: vertical;" placeholder="Additional details about this symptom..."></textarea>
                         </div>
                         <div style="display: flex; gap: 10px; justify-content: flex-end;">
                             <button type="button" class="btn" onclick="closeAddSymptomModal()"
@@ -397,20 +430,28 @@
 
                 async function searchSymptoms() {
                     const query = document.getElementById('symptomSearch').value.trim();
-                    if (!query) return;
+                    const resultsDiv = document.getElementById('searchResults');
+                    
+                    if (!query) {
+                        resultsDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 0.9em;">Type to search symptoms using C++ DSA...</span>';
+                        return;
+                    }
 
                     try {
+                        resultsDiv.innerHTML = '<span style="color: var(--accent);">🔍 Searching with C++ DSA...</span>';
+                        
                         const response = await fetch(`{{ url_for('admin.search_symptoms') }}?q=${encodeURIComponent(query)}`);
                         const data = await response.json();
 
-                        const resultsDiv = document.getElementById('searchResults');
-                        if (data.results.length > 0) {
-                            resultsDiv.innerHTML = '<strong>Results:</strong><br>' + data.results.map(s => `<span class="badge badge-primary">${s}</span>`).join('');
+                        if (data.results && data.results.length > 0) {
+                            resultsDiv.innerHTML = '<strong style="color: var(--accent);">Found ' + data.results.length + ' results:</strong><br><div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">' + 
+                                data.results.map(s => `<span style="padding: 6px 12px; background: var(--nav-bg); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 0.9em;">${s}</span>`).join('') + 
+                                '</div>';
                         } else {
-                            resultsDiv.innerHTML = '<span style="color: #ccc;">No results found</span>';
+                            resultsDiv.innerHTML = '<span style="color: var(--text-muted);">No results found for "' + query + '"</span>';
                         }
                     } catch (error) {
-                        alert('Search failed: ' + error.message);
+                        resultsDiv.innerHTML = '<span style="color: #ff4444;">Search failed: ' + error.message + '</span>';
                     }
                 }
 

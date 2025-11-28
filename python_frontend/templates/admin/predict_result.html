@@ -9,10 +9,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <style>
         :root {
-            --accent: #008b8b;
-            --accent-light: #30e3ca;
-            --bg-main: #000000;
-            --bg-card: #0d0d0d;
+            --accent: #08D9D6;
+            --accent-light: #2CE7DD;
+            --bg-main: #181B20;
+            --bg-card: #22262E;
             --nav-bg: #000000;
             --text-main: #FFFFFF;
             --text-muted: #a7e0df;
@@ -53,16 +53,22 @@
             box-sizing: border-box;
         }
 
-        .positive {
-            background: rgba(255, 68, 68, 0.2);
-            color: #ff6666;
-            border: 2px solid #ff6666;
+        .result-badge.high {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 2px solid var(--danger);
         }
 
-        .negative {
-            background: rgba(8, 217, 214, 0.2);
-            color: #08D9D6;
-            border: 2px solid #08D9D6;
+        .result-badge.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border: 2px solid var(--warning);
+        }
+
+        .result-badge.low {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 2px solid var(--success);
         }
 
         .details {
@@ -149,26 +155,23 @@
         <div class="card result-card-inline" style="max-width:900px;margin:0 auto;">
             <h1>{{ disease_name }} Result</h1>
 
-            {% set _label = severity_label|default(outcome) %}
-            {% if _label %}
-                {% set _l = _label.lower() %}
-                {% if _l.startswith('high') or 'high' in _l %}
-                    <div class="result-badge positive">⚠️ High Risk Detected</div>
-                {% elif 'moder' in _l or 'mod' in _l %}
-                    <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
-                {% else %}
-                    <div class="result-badge negative">✅ Low Risk / Normal</div>
-                {% endif %}
-            {% else %}
-                {% set risk = risk_score|default(0) %}
-                {% if risk >= 50 %}
-                <div class="result-badge positive">⚠️ High Risk Detected</div>
-                {% elif risk >= 30 %}
-                <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
-                {% else %}
-                <div class="result-badge negative">✅ Low Risk / Normal</div>
-                {% endif %}
+            {% set risk = risk_score|default(0)|float %}
+            {% set risk_level = 'low' %}
+            {% set risk_emoji = '🟢' %}
+            {% set risk_label = 'Low Risk' %}
+            {% if risk >= 70 %}
+                {% set risk_level = 'high' %}
+                {% set risk_emoji = '🔴' %}
+                {% set risk_label = 'High Risk' %}
+            {% elif risk >= 40 %}
+                {% set risk_level = 'medium' %}
+                {% set risk_emoji = '🟡' %}
+                {% set risk_label = 'Medium Risk' %}
             {% endif %}
+            
+            <div class="result-badge {{ risk_level }}" style="border-left: 4px solid {% if risk_level == 'high' %}var(--danger){% elif risk_level == 'medium' %}var(--warning){% else %}var(--success){% endif %};">
+                {{ risk_emoji }} {{ risk_label }} - {{ "%.1f"|format(risk) }}%
+            </div>
 
             <!-- ✨ SECTIONS 13, 14, 15 REMOVED ✨ -->
 

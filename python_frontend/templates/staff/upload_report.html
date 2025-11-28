@@ -148,19 +148,32 @@
             margin-bottom: 12px;
         }
         .upload-area {
-            border: 2px dashed rgba(8,139,139,0.12);
-            border-radius: 10px;
-            padding: 22px;
-            text-align: left;
-            background: linear-gradient(90deg, rgba(8,217,214,0.02), rgba(0,0,0,0));
+            border: 3px dashed var(--input-border);
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            background: var(--input-bg);
             cursor: pointer;
             display: flex;
-            gap: 16px;
+            flex-direction: column;
+            gap: 10px;
             align-items: center;
-            transition: all .18s ease-in-out;
+            justify-content: center;
+            transition: all .25s ease-in-out;
+            min-height: 280px;
         }
-        .upload-area:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(8,217,214,0.04); }
-        .upload-area.dragover { background: rgba(8,217,214,0.03); border-color: var(--accent); }
+        .upload-area:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 40px rgba(8,217,214,0.15); 
+            border-color: var(--accent);
+            background: var(--form-card-bg);
+        }
+        .upload-area.dragover { 
+            background: rgba(8,217,214,0.1); 
+            border-color: var(--accent); 
+            border-style: solid;
+            transform: scale(1.02);
+        }
         .upload-area .upload-icon { font-size: 34px; }
         .upload-area .upload-meta { flex:1 }
         .upload-area .upload-text { color: var(--text-main); font-weight:700; font-size:1.02em; }
@@ -263,10 +276,11 @@
                 </select>
                 
                 <label for="report_file" class="form-label">Upload Medical Report (PDF/CSV/Image)</label>
-                <div id="staff-upload-area" class="upload-area" style="margin-bottom:12px;">
-                    <div class="upload-icon" style="font-size:28px;">📁</div>
-                    <div class="upload-text" style="color:var(--text-muted);">Click to upload or drag and drop</div>
-                    <div class="upload-hint" style="color:var(--text-muted); font-size:0.9em; margin-top:6px;">Supported: PDF, JPG, PNG, BMP, TIFF, CSV (Max 16MB)</div>
+                <div id="staff-upload-area" class="upload-area" style="margin-bottom:12px; padding: 60px 40px; flex-direction: column; text-align: center; border: 3px dashed var(--input-border); background: var(--input-bg);">
+                    <div class="upload-icon" style="font-size: 72px; margin-bottom: 20px;">📁</div>
+                    <div class="upload-text" style="color: var(--text-main); font-size: 1.3em; font-weight: 700; margin-bottom: 10px;">Drag & Drop your file here</div>
+                    <div class="upload-hint" style="color: var(--text-muted); font-size: 1em; margin-bottom: 15px;">or click to browse</div>
+                    <div class="upload-hint" style="color: var(--text-muted); font-size: 0.95em; opacity: 0.8;">Supported: PDF, JPG, PNG, BMP, TIFF, CSV (Max 16MB)</div>
                 </div>
                 <input type="file" class="form-control" id="report_file" name="report_file" style="display:none;" accept=".pdf,.csv,image/*">
                 <div id="staff-preview" style="display:none; margin-top:8px;">

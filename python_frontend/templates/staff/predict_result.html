@@ -159,7 +159,31 @@
         if (localStorage.getItem('theme') === 'light') { document.documentElement.classList.add('light'); }
     </script>
     <style>
-        :root { --accent: #008b8b; --accent-light: #30e3ca; --accent-contrast: #000000; --bg-main: #000000; --bg-card: #0d0d0d; --nav-bg: #000000; --text-main: #FFFFFF; --text-muted: #a7e0df; --shadow: 0 6px 36px rgba(0,0,0,0.6); }
+        :root { 
+            --accent: #08D9D6; 
+            --accent-light: #2CE7DD; 
+            --accent-contrast: #181B20;
+            --bg-main: #181B20; 
+            --bg-card: #22262E; 
+            --nav-bg: #171A1F; 
+            --text-main: #FFFFFF; 
+            --text-muted: #B8E2E7; 
+            --shadow: 0 6px 36px rgba(8, 217, 214, 0.13);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+        html.light {
+            --bg-main: #e8f4f5;
+            --bg-card: #f5fafa;
+            --nav-bg: #d0e9ea;
+            --accent: #047a7a;
+            --text-main: #0a1a1a;
+            --text-muted: #2d4a52;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --success: #059669;
+        }
         .nav-bar { width:100vw; background:var(--nav-bg); color:var(--accent); font-weight:800; letter-spacing:0.5px; box-shadow:var(--shadow); padding:18px 0; text-align:center; font-size:1.32em; border-bottom-left-radius:16px; border-bottom-right-radius:16px; position:relative; margin-bottom:30px; }
         .theme-switcher { position:absolute; top:8px; right:18px; cursor:pointer; font-size:1.75em; color:var(--accent); background:none; border:none; }
         .nav-links { position:absolute; top:8px; left:18px; display:flex; gap:15px; align-items:center; flex-wrap:wrap; }
@@ -171,26 +195,23 @@
         <div class="card">
             <h1>{{ disease_name }} Result</h1>
 
-            {% set _label = severity_label|default(outcome) %}
-            {% if _label %}
-                {% set _l = _label.lower() %}
-                {% if _l.startswith('high') or 'high' in _l %}
-                    <div class="result-badge positive">⚠️ High Risk Detected</div>
-                {% elif 'moder' in _l or 'mod' in _l %}
-                    <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
-                {% else %}
-                    <div class="result-badge negative">✅ Low Risk / Normal</div>
-                {% endif %}
-            {% else %}
-                {% set risk = risk_score|default(0) %}
-                {% if risk >= 50 %}
-                <div class="result-badge positive">⚠️ High Risk Detected</div>
-                {% elif risk >= 30 %}
-                <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
-                {% else %}
-                <div class="result-badge negative">✅ Low Risk / Normal</div>
-                {% endif %}
+            {% set risk = risk_score|default(0)|float %}
+            {% set risk_level = 'low' %}
+            {% set risk_emoji = '🟢' %}
+            {% set risk_label = 'Low Risk' %}
+            {% if risk >= 70 %}
+                {% set risk_level = 'high' %}
+                {% set risk_emoji = '🔴' %}
+                {% set risk_label = 'High Risk' %}
+            {% elif risk >= 40 %}
+                {% set risk_level = 'medium' %}
+                {% set risk_emoji = '🟡' %}
+                {% set risk_label = 'Medium Risk' %}
             {% endif %}
+            
+            <div class="result-badge {{ risk_level }}" style="border-left: 4px solid {% if risk_level == 'high' %}var(--danger){% elif risk_level == 'medium' %}var(--warning){% else %}var(--success){% endif %};">
+                {{ risk_emoji }} {{ risk_label }} - {{ "%.1f"|format(risk) }}%
+            </div>
 
             <p style="font-size: 1.2em;">{{ severity_label|default(outcome) }}</p>
             <p>{{ remark|default(severity_reason)|default('Based on the analysis of provided health metrics.') }}</p>

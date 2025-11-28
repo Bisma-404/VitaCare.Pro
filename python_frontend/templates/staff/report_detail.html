@@ -302,48 +302,65 @@
         {% if tests %}
         <div class="section">
             <h2>🔬 Input Data (Test Results)</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Test Name</th>
-                        <th>Value</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for test in tests %}
-                    <tr>
-                        <td><strong>{{ test.test_name }}</strong>
-                            {% if test.unit %}<span style="color: var(--text-muted); font-size: 0.85em;"> ({{ test.unit
-                                }})</span>{% endif %}
-                        </td>
-                        <td>{{ "%.2f"|format(test.test_value) if test.test_value else 'N/A' }}</td>
-                        <td>
-                            {% if test.normal_range %}
-                            {% set val = test.test_value|float %}
-                            {% set parts = test.normal_range.split('-') %}
-                            {% if parts|length == 2 %}
-                            {% set min_val = parts[0]|float %}
-                            {% set max_val = parts[1]|float %}
-                            {% if val >= min_val and val <= max_val %} <span class="status-indicator status-normal">✅
-                                Normal</span>
-                                {% elif val < min_val * 0.9 or val> max_val * 1.1 %}
-                                    <span class="status-indicator status-danger">❌ Abnormal</span>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Laboratory test values from the medical report</p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: var(--nav-bg);">
+                            <th style="padding: 15px; text-align: left; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Test Name</th>
+                            <th style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Value</th>
+                            <th style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Reference Range</th>
+                            <th style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Unit</th>
+                            <th style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for test in tests %}
+                        <tr style="border-bottom: 1px solid var(--nav-bg);">
+                            <td style="padding: 15px; color: var(--text-main); font-weight: 600;">{{ test.test_name }}</td>
+                            <td style="padding: 15px; text-align: center;">
+                                <span style="background: rgba(8, 217, 214, 0.2); color: var(--accent); padding: 6px 14px; border-radius: 8px; font-weight: 700;">
+                                    {{ "%.2f"|format(test.test_value) if test.test_value is not none else 'N/A' }}
+                                </span>
+                            </td>
+                            <td style="padding: 15px; text-align: center; color: var(--text-muted);">
+                                {{ test.reference_range if test.reference_range else 'Not specified' }}
+                            </td>
+                            <td style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 0.9em;">
+                                {{ test.unit if test.unit else '-' }}
+                            </td>
+                            <td style="padding: 15px; text-align: center;">
+                                {% if test.reference_range and test.test_value is not none %}
+                                    {% set val = test.test_value|float %}
+                                    {% set parts = test.reference_range.split('-') %}
+                                    {% if parts|length == 2 %}
+                                        {% set min_val = parts[0]|float %}
+                                        {% set max_val = parts[1]|float %}
+                                        {% if val >= min_val and val <= max_val %}
+                                            <span style="background: rgba(16, 185, 129, 0.2); color: var(--success); padding: 6px 12px; border-radius: 12px; font-weight: 700; font-size: 0.85em;">
+                                                ✅ Normal
+                                            </span>
+                                        {% elif val < min_val * 0.85 or val > max_val * 1.15 %}
+                                            <span style="background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 6px 12px; border-radius: 12px; font-weight: 700; font-size: 0.85em;">
+                                                ❌ Abnormal
+                                            </span>
+                                        {% else %}
+                                            <span style="background: rgba(245, 158, 11, 0.2); color: var(--warning); padding: 6px 12px; border-radius: 12px; font-weight: 700; font-size: 0.85em;">
+                                                ⚠️ Borderline
+                                            </span>
+                                        {% endif %}
                                     {% else %}
-                                    <span class="status-indicator status-warning">⚠️ Borderline</span>
+                                        <span style="color: var(--text-muted); font-size: 0.85em;">-</span>
                                     {% endif %}
-                                    {% else %}
-                                    <span style="color: var(--text-muted); font-size: 0.85em;">Range: {{
-                                        test.normal_range }}</span>
-                                    {% endif %}
-                                    {% else %}
-                                    <span style="color: var(--text-muted); font-size: 0.85em;">No range defined</span>
-                                    {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.85em;">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
 
@@ -352,39 +369,72 @@
         <div class="section">
             <h2>🔮 Analysis Results (Disease Predictions)</h2>
             {% for prediction in predictions %}
-            <div class="prediction-card">
+            {% set risk_score = (prediction.risk_score or prediction.confidence_score or 0)|float %}
+            <div class="prediction-card" style="border-left: 4px solid {% if risk_score >= 70 %}var(--danger){% elif risk_score >= 40 %}var(--warning){% else %}var(--success){% endif %};">
                 <h3>{{ prediction.disease_name if prediction.disease_name else 'Disease Prediction' }}</h3>
                 <div class="info-grid" style="margin-top: 15px;">
                     <div class="info-item">
-                        <div class="info-label">Result</div>
+                        <div class="info-label">Risk Assessment</div>
                         <div class="info-value">
-                            {% if prediction.prediction_result == 1 %}
-                            <span class="status-indicator status-danger">🔴 High Risk</span>
+                            {% if risk_score >= 70 %}
+                            <span class="status-indicator status-danger">🔴 High Risk (≥70%)</span>
+                            {% elif risk_score >= 40 %}
+                            <span class="status-indicator status-warning">🟡 Medium Risk (40-69%)</span>
                             {% else %}
-                            <span class="status-indicator status-normal">🟢 Low Risk</span>
+                            <span class="status-indicator status-normal">🟢 Low Risk (<40%)</span>
                             {% endif %}
                         </div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Risk Score</div>
-                        <div class="info-value">{{ "%.1f"|format(prediction.risk_score) if prediction.risk_score else (
-                            "%.1f"|format(prediction.confidence_score) if prediction.confidence_score else 'N/A') }}%
-                        </div>
+                        <div class="info-value">{{ "%.1f"|format(risk_score) }}%</div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Severity</div>
-                        <div class="info-value">{{ prediction.severity_label if prediction.severity_label else 'N/A' }}
-                        </div>
+                        <div class="info-label">Prediction</div>
+                        <div class="info-value">{{ 'Positive' if prediction.prediction_result == 1 else 'Negative' }}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Analysis Method</div>
-                        <div class="info-value">{{ prediction.method if prediction.method else 'DSA' }}</div>
+                        <div class="info-value">{{ prediction.method if prediction.method else 'C++ Decision Tree (DSA)' }}</div>
                     </div>
                 </div>
+                
+                {% if prediction.threshold_violations %}
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--nav-bg);">
+                    <div class="info-label">⚠️ Abnormal Parameters ({{ prediction.threshold_violations|length }})</div>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                    {% for violation in prediction.threshold_violations[:6] %}
+                        <li style="color: var(--text-muted); font-size: 0.95em; line-height: 1.6; margin: 5px 0;">
+                            <strong>{{ violation.parameter }}:</strong> {{ violation.value }} 
+                            <span style="color: var(--danger);">(Normal: {{ violation.normal_range }})</span>
+                        </li>
+                    {% endfor %}
+                    {% if prediction.threshold_violations|length > 6 %}
+                        <li style="color: var(--text-muted); font-size: 0.9em; font-style: italic; margin-top: 10px;">
+                            + {{ prediction.threshold_violations|length - 6 }} more abnormal parameter(s) not shown
+                        </li>
+                    {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if prediction.severity_label %}
+                <div style="margin-top: 15px;">
+                    <div class="info-label">Severity Level</div>
+                    <div style="margin-top: 5px;">
+                        <span style="background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 6px 14px; border-radius: 16px; font-size: 0.9em; font-weight: 700;">
+                            {{ prediction.severity_label }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
                 {% if prediction.severity_reason %}
                 <div style="margin-top: 15px;">
-                    <div class="info-label">Reason</div>
-                    <div style="color: var(--text-muted);">{{ prediction.severity_reason }}</div>
+                    <div class="info-label">Clinical Analysis</div>
+                    <div style="margin-top: 8px; padding: 12px; background: var(--nav-bg); border-radius: 8px; color: var(--text-muted);">
+                        {{ prediction.severity_reason }}
+                    </div>
                 </div>
                 {% endif %}
             </div>

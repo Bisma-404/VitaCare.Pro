@@ -87,9 +87,9 @@ def view_reports():
         predictions = PredictionDAO.get_predictions_by_report(report['id'])
         report['prediction_count'] = len(predictions)
         
-        # Calculate max risk score from predictions
+        # Calculate max risk score from predictions (prioritize risk_score)
         if predictions:
-            max_risk = max([p.get('confidence_score', 0) for p in predictions])
+            max_risk = max([p.get('risk_score') or p.get('confidence_score', 0) for p in predictions])
             report['max_risk_score'] = max_risk
         else:
             report['max_risk_score'] = None
@@ -249,10 +249,25 @@ def medical_summary():
     # Get all predictions
     predictions = PredictionDAO.get_predictions_by_patient(patient_id)
     
+    # Calculate statistics
+    high_risk_count = len([p for p in predictions if (p.get('risk_score') or p.get('confidence_score', 0)) >= 70])
+    medium_risk_count = len([p for p in predictions if 40 <= (p.get('risk_score') or p.get('confidence_score', 0)) < 70])
+    low_risk_count = len([p for p in predictions if (p.get('risk_score') or p.get('confidence_score', 0)) < 40])
+    
+    statistics = {
+        'total_reports': len(reports),
+        'total_predictions': len(predictions),
+        'high_risk_count': high_risk_count,
+        'medium_risk_count': medium_risk_count,
+        'low_risk_count': low_risk_count
+    }
+    
     return render_template('patient/medical_summary.html',
                          profile=profile,
                          reports=reports,
-                         predictions=predictions)
+                         predictions=predictions,
+                         statistics=statistics,
+                         current_time=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
 
 # ============================================================================

@@ -1,17 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medical Summary - VitaCare Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        html,
-        body {
-            transition: background 0.45s, color 0.3s;
-        }
-
+        html,body { transition: background 0.45s, color 0.3s; }
         body {
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--bg-main, #181B20);
@@ -19,7 +14,6 @@
             margin: 0;
             color: var(--text-main, #FFF);
         }
-
         :root {
             --bg-main: #181B20;
             --bg-card: #22262E;
@@ -32,71 +26,53 @@
             --warning: #f59e0b;
             --danger: #ef4444;
         }
-
         html.light {
-            --bg-main: #fcfeff;
-            --bg-card: #FFFFFF;
-            --nav-bg: #F6FEFB;
-            --accent: #059494;
-            --text-main: #1A232E;
-            --text-muted: #455664;
-            --shadow: 0 10px 30px 0 #18c0ce1e;
+            --bg-main: #e8f4f5;
+            --bg-card: #f5fafa;
+            --nav-bg: #d0e9ea;
+            --accent: #047a7a;
+            --text-main: #0a1a1a;
+            --text-muted: #2d4a52;
+            --shadow: 0 10px 30px 0 #047a7a33;
             --success: #059669;
             --warning: #d97706;
             --danger: #dc2626;
         }
-
         .nav-bar {
-            width: 100vw;
-            background: var(--nav-bg);
-            color: var(--accent);
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            box-shadow: var(--shadow);
-            padding: 18px 0;
-            text-align: center;
-            font-size: 1.32em;
-            border-bottom-left-radius: 16px;
-            border-bottom-right-radius: 16px;
+            width: 100vw; background: var(--nav-bg);
+            color: var(--accent); font-weight: 800;
+            letter-spacing: 0.5px; box-shadow: var(--shadow);
+            padding: 18px 0; text-align: center; font-size: 1.32em;
+            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
             position: relative;
             margin-bottom: 30px;
         }
-
         .theme-switcher {
-            position: absolute;
-            top: 8px;
-            right: 18px;
-            cursor: pointer;
-            font-size: 1.75em;
-            color: var(--accent);
-            background: none;
-            border: none;
-            outline: none;
-            transition: color .25s;
+            position: absolute; top: 8px; right: 18px;
+            cursor: pointer; font-size: 1.75em; color: var(--accent);
+            background: none; border: none; outline: none; transition: color .25s;
         }
-
         .nav-links {
-            position: absolute;
-            top: 8px;
-            left: 18px;
+            position: absolute; top: 8px; left: 18px;
             display: flex;
             gap: 15px;
             align-items: center;
         }
-
         .nav-links a {
             color: var(--accent);
             text-decoration: none;
             font-weight: 600;
             font-size: 0.9em;
+            transition: opacity 0.3s;
         }
-
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
-
         .section {
             background: var(--bg-card);
             border-radius: 16px;
@@ -104,283 +80,471 @@
             box-shadow: var(--shadow);
             margin-bottom: 20px;
         }
-
         .section h2 {
             color: var(--accent);
             margin-bottom: 20px;
             border-bottom: 2px solid var(--accent);
             padding-bottom: 10px;
+            font-size: 1.5em;
         }
-
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-
         .info-item {
-            padding: 12px;
+            padding: 15px;
             background: var(--nav-bg);
-            border-radius: 8px;
+            border-radius: 10px;
+            border-left: 4px solid var(--accent);
         }
-
         .info-label {
             color: var(--text-muted);
             font-size: 0.85em;
             margin-bottom: 5px;
+            font-weight: 600;
         }
-
         .info-value {
             color: var(--text-main);
-            font-weight: 600;
-            font-size: 1.1em;
+            font-weight: 700;
+            font-size: 1.15em;
         }
-
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background: var(--nav-bg);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            border-left: 4px solid var(--accent);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(8, 217, 214, 0.2);
+        }
+        .summary-card.high-risk {
+            border-left-color: var(--danger);
+        }
+        .summary-card.medium-risk {
+            border-left-color: var(--warning);
+        }
+        .summary-card.low-risk {
+            border-left-color: var(--success);
+        }
+        .summary-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .summary-value {
+            font-size: 2.5em;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 10px 0;
+            line-height: 1;
+        }
+        .summary-label {
+            color: var(--text-muted);
+            font-size: 0.9em;
+            font-weight: 600;
+        }
         .report-card {
             background: var(--nav-bg);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             border-left: 4px solid var(--accent);
+            transition: transform 0.2s;
         }
-
+        .report-card:hover {
+            transform: translateX(5px);
+        }
         .report-card h3 {
             color: var(--accent);
             margin-top: 0;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            font-size: 1.2em;
         }
-
         .prediction-badge {
             display: inline-block;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 0.85em;
-            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
             margin-right: 10px;
+            margin-bottom: 8px;
         }
-
         .badge-high-risk {
-            background: var(--danger);
-            color: white;
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 2px solid var(--danger);
         }
-
+        .badge-medium-risk {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 2px solid var(--warning);
+        }
         .badge-low-risk {
-            background: var(--success);
-            color: white;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            border: 2px solid var(--success);
         }
-
         .btn {
             display: inline-block;
-            padding: 10px 20px;
-            background: var(--accent);
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
             color: var(--bg-main);
             text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
+            border-radius: 10px;
+            font-weight: 700;
             margin-top: 10px;
             margin-right: 10px;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-
         .btn:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(8, 217, 214, 0.3);
         }
-
         .empty-message {
             text-align: center;
             padding: 40px;
             color: var(--text-muted);
+            background: var(--nav-bg);
+            border-radius: 12px;
         }
-
+        .scrollable-table {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: var(--nav-bg);
+        }
+        .scrollable-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .scrollable-table thead {
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            z-index: 10;
+        }
+        .scrollable-table th {
+            padding: 12px;
+            text-align: left;
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+            font-weight: 700;
+        }
+        .scrollable-table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(8, 217, 214, 0.1);
+        }
+        .scrollable-table tr:hover {
+            background: rgba(8, 217, 214, 0.05);
+        }
         @media print {
-
-            .nav-bar,
-            .theme-switcher,
-            .btn {
-                display: none;
-            }
-
-            body {
-                background: white;
-                color: black;
-            }
-
-            .section {
-                box-shadow: none;
-                border: 1px solid #ddd;
-            }
+            .nav-bar, .nav-links, .theme-switcher, .btn { display: none; }
+            body { background: white; color: black; }
+            .section { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
         }
     </style>
     <script>
-        function setTheme(mode) {
-            document.documentElement.className = mode;
-            localStorage.setItem('theme', mode);
-            document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
-        }
-        function toggleTheme() {
-            const current = document.documentElement.classList.contains('light') ? 'light' : 'dark';
-            setTheme(current === 'dark' ? 'light' : 'dark');
-        }
-        document.addEventListener('DOMContentLoaded', function () {
-            let theme = localStorage.getItem('theme');
-            if (!theme) { theme = 'dark'; localStorage.setItem('theme', 'dark'); }
-            setTheme(theme);
-        });
+    function setTheme(mode) {
+      document.documentElement.className = mode;
+      localStorage.setItem('theme', mode);
+      document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+    document.addEventListener('DOMContentLoaded',function(){
+      let theme = localStorage.getItem('theme');
+      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
+      setTheme(theme);
+    });
     </script>
 </head>
-
 <body>
     <div class="nav-bar">
         <div class="nav-links">
             <a href="{{ url_for('patient.dashboard') }}">← Dashboard</a>
-            <a href="javascript:window.print()">🖨️ Print</a>
+            <a href="javascript:window.print()">🖨️ Print / Save as PDF</a>
         </div>
         📥 Medical Summary
         <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()">🌙</button>
     </div>
-
+    
     <div class="container">
+        <!-- Header Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-icon">📄</div>
+                <div class="summary-value">{{ reports|length }}</div>
+                <div class="summary-label">Total Reports</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">🔮</div>
+                <div class="summary-value">{{ predictions|length }}</div>
+                <div class="summary-label">Predictions</div>
+            </div>
+            {% if statistics %}
+            <div class="summary-card high-risk">
+                <div class="summary-icon">🔴</div>
+                <div class="summary-value">{{ statistics.high_risk_count }}</div>
+                <div class="summary-label">High Risk</div>
+            </div>
+            <div class="summary-card medium-risk">
+                <div class="summary-icon">🟡</div>
+                <div class="summary-value">{{ statistics.medium_risk_count }}</div>
+                <div class="summary-label">Medium Risk</div>
+            </div>
+            <div class="summary-card low-risk">
+                <div class="summary-icon">🟢</div>
+                <div class="summary-value">{{ statistics.low_risk_count }}</div>
+                <div class="summary-label">Low Risk</div>
+            </div>
+            {% endif %}
+        </div>
+
         <!-- Patient Information -->
         <div class="section">
             <h2>👤 Patient Information</h2>
             {% if profile %}
             <div class="info-grid">
                 <div class="info-item">
-                    <div class="info-label">Full Name</div>
+                    <div class="info-label">👨‍⚕️ Full Name</div>
                     <div class="info-value">{{ profile.name if profile.name else 'N/A' }}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Date of Birth</div>
-                    <div class="info-value">{{ profile.date_of_birth.strftime('%Y-%m-%d') if profile.date_of_birth else
-                        'N/A' }}</div>
+                    <div class="info-label">🎂 Date of Birth</div>
+                    <div class="info-value">{{ profile.date_of_birth.strftime('%Y-%m-%d') if profile.date_of_birth else 'N/A' }}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Gender</div>
+                    <div class="info-label">⚧ Gender</div>
                     <div class="info-value">{{ profile.gender if profile.gender else 'N/A' }}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Blood Group</div>
+                    <div class="info-label">🩸 Blood Group</div>
                     <div class="info-value">{{ profile.blood_group if profile.blood_group else 'N/A' }}</div>
                 </div>
                 {% if profile.email %}
                 <div class="info-item">
-                    <div class="info-label">Email</div>
-                    <div class="info-value">{{ profile.email }}</div>
+                    <div class="info-label">📧 Email</div>
+                    <div class="info-value" style="font-size: 0.95em;">{{ profile.email }}</div>
                 </div>
                 {% endif %}
                 {% if profile.phone %}
                 <div class="info-item">
-                    <div class="info-label">Phone</div>
+                    <div class="info-label">📱 Phone</div>
                     <div class="info-value">{{ profile.phone }}</div>
                 </div>
                 {% endif %}
             </div>
+            <div style="text-align: center; padding: 15px; background: rgba(8, 217, 214, 0.1); border-radius: 10px; margin-top: 20px;">
+                <p style="color: var(--accent); font-size: 1em; margin: 0; font-weight: 700;">
+                    📅 Report Generated: <span style="color: var(--text-main);">{{ current_time }}</span>
+                </p>
+            </div>
             {% else %}
             <div class="empty-message">
-                <p>Profile information not available</p>
+                <div style="font-size: 3em; margin-bottom: 15px;">👤</div>
+                <p style="font-size: 1.1em; margin: 0;">Profile information not available</p>
             </div>
             {% endif %}
         </div>
-
-        <!-- Medical Reports Summary -->
+        
+        <!-- Medical Reports History -->
         <div class="section">
-            <h2>📄 Medical Reports Summary</h2>
-            <div class="info-grid">
+            <h2>📄 Medical Reports History</h2>
+            {% if reports %}
+            <div class="info-grid" style="margin-bottom: 25px;">
                 <div class="info-item">
-                    <div class="info-label">Total Reports</div>
+                    <div class="info-label">📊 Total Reports</div>
                     <div class="info-value">{{ reports|length }}</div>
                 </div>
+                <div class="info-item">
+                    <div class="info-label">📅 Latest Report</div>
+                    <div class="info-value" style="font-size: 1em;">{{ reports[0].created_at.strftime('%Y-%m-%d') if reports[0].created_at else 'N/A' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">📅 First Report</div>
+                    <div class="info-value" style="font-size: 1em;">{{ reports[-1].created_at.strftime('%Y-%m-%d') if reports[-1].created_at else 'N/A' }}</div>
+                </div>
             </div>
 
-            {% if reports %}
-            <h3 style="color: var(--accent); margin-top: 25px; margin-bottom: 15px;">Recent Reports</h3>
+            <h3 style="color: var(--accent); margin-bottom: 15px; font-size: 1.2em;">📋 Recent Reports</h3>
             {% for report in reports[:10] %}
             <div class="report-card">
-                <h3>Report #{{ report.id }} - {{ report.report_type or 'General' }}</h3>
-                <p style="color: var(--text-muted); margin: 5px 0;">
-                    <strong>Date:</strong> {{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else
-                    'N/A' }}
-                </p>
-                {% if report.staff_name %}
-                <p style="color: var(--text-muted); margin: 5px 0;">
-                    <strong>Uploaded by:</strong> {{ report.staff_name }}
-                </p>
-                {% endif %}
-                {% if report.notes %}
-                <p style="margin: 10px 0; padding: 10px; background: var(--bg-main); border-radius: 6px;">
-                    <strong>Notes:</strong> {{ report.notes }}
-                </p>
-                {% endif %}
-                <a href="{{ url_for('patient.view_report_detail', report_id=report.id) }}" class="btn">View Details</a>
+                <h3>📄 Report #{{ report.id }} - {{ report.report_type or 'General' }}</h3>
+                <div style="color: var(--text-muted); line-height: 1.8;">
+                    <p style="margin: 8px 0;">
+                        <strong>📅 Date:</strong> {{ report.created_at.strftime('%B %d, %Y at %H:%M') if report.created_at else 'N/A' }}
+                    </p>
+                    {% if report.staff_name %}
+                    <p style="margin: 8px 0;">
+                        <strong>👨‍⚕️ Uploaded by:</strong> {{ report.staff_name }}
+                    </p>
+                    {% endif %}
+                    {% if report.notes %}
+                    <div style="margin-top: 12px; padding: 12px; background: var(--bg-main); border-radius: 8px; border-left: 3px solid var(--accent);">
+                        <strong style="color: var(--accent);">📝 Notes:</strong>
+                        <p style="margin: 5px 0 0 0; color: var(--text-main);">{{ report.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('patient.view_report_detail', report_id=report.id) }}" class="btn">
+                    👁️ View Full Details
+                </a>
             </div>
             {% endfor %}
+
+            {% if reports|length > 10 %}
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ url_for('patient.view_reports') }}" class="btn">
+                    📄 View All {{ reports|length }} Reports
+                </a>
+            </div>
+            {% endif %}
             {% else %}
             <div class="empty-message">
-                <p>No medical reports available yet.</p>
-                <p style="font-size: 0.9em; margin-top: 10px;">Medical staff will upload your reports.</p>
+                <div style="font-size: 3em; margin-bottom: 15px;">📄</div>
+                <p style="font-size: 1.1em; margin: 0 0 10px 0;">No medical reports available yet</p>
+                <p style="font-size: 0.9em; opacity: 0.8;">Medical staff will upload your reports</p>
             </div>
             {% endif %}
         </div>
-
-        <!-- Predictions Summary -->
+        
+        <!-- Disease Predictions Analysis -->
         <div class="section">
-            <h2>🔮 Disease Predictions Summary</h2>
-            <div class="info-grid">
-                <div class="info-item">
-                    <div class="info-label">Total Predictions</div>
-                    <div class="info-value">{{ predictions|length }}</div>
-                </div>
-                {% if predictions %}
-                {% set high_risk = predictions|selectattr('prediction_result', 'equalto', 1)|list|length %}
-                {% set low_risk = predictions|selectattr('prediction_result', 'equalto', 0)|list|length %}
-                <div class="info-item">
-                    <div class="info-label">High Risk Predictions</div>
-                    <div class="info-value" style="color: var(--danger);">{{ high_risk }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Low Risk Predictions</div>
-                    <div class="info-value" style="color: var(--success);">{{ low_risk }}</div>
-                </div>
-                {% endif %}
-            </div>
-
+            <h2>🔮 Disease Predictions Analysis</h2>
             {% if predictions %}
-            <h3 style="color: var(--accent); margin-top: 25px; margin-bottom: 15px;">Prediction Details</h3>
+            {% if statistics %}
+            <div class="info-grid" style="margin-bottom: 25px;">
+                <div class="info-item" style="border-left-color: var(--danger);">
+                    <div class="info-label">🔴 High Risk (≥70%)</div>
+                    <div class="info-value" style="color: var(--danger);">{{ statistics.high_risk_count }}</div>
+                </div>
+                <div class="info-item" style="border-left-color: var(--warning);">
+                    <div class="info-label">🟡 Medium Risk (40-69%)</div>
+                    <div class="info-value" style="color: var(--warning);">{{ statistics.medium_risk_count }}</div>
+                </div>
+                <div class="info-item" style="border-left-color: var(--success);">
+                    <div class="info-label">🟢 Low Risk (<40%)</div>
+                    <div class="info-value" style="color: var(--success);">{{ statistics.low_risk_count }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <h3 style="color: var(--accent); margin-bottom: 15px; font-size: 1.2em;">🩺 Detailed Prediction Results</h3>
             {% for prediction in predictions[:15] %}
-            <div class="report-card">
-                <h3>{{ prediction.disease_name if prediction.disease_name else 'Disease Prediction' }}</h3>
-                <p style="margin: 10px 0;">
-                    {% if prediction.prediction_result == 1 %}
+            {% set risk_score = (prediction.risk_score or prediction.confidence_score or 0)|float %}
+            <div class="report-card" style="border-left-color: {% if risk_score >= 70 %}var(--danger){% elif risk_score >= 40 %}var(--warning){% else %}var(--success){% endif %};">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">🔬 {{ prediction.disease_name if prediction.disease_name else 'Disease Prediction' }}</h3>
+                    {% if risk_score >= 70 %}
                     <span class="prediction-badge badge-high-risk">🔴 High Risk</span>
+                    {% elif risk_score >= 40 %}
+                    <span class="prediction-badge badge-medium-risk">🟡 Medium Risk</span>
                     {% else %}
                     <span class="prediction-badge badge-low-risk">🟢 Low Risk</span>
                     {% endif %}
-                    <strong>Confidence:</strong> {{ "%.1f"|format(prediction.confidence_score) if
-                    prediction.confidence_score else 'N/A' }}%
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.9em;">
-                    <strong>Analysis Method:</strong> {{ prediction.method if prediction.method else 'DSA' }} |
-                    <strong>Date:</strong> {{ prediction.report_date.strftime('%Y-%m-%d') if prediction.report_date else
-                    'N/A' }}
-                </p>
+                </div>
+                
+                <div style="color: var(--text-muted); line-height: 1.8;">
+                    <p style="margin: 8px 0;">
+                        <strong>📊 Risk Score:</strong> 
+                        <span style="color: {% if risk_score >= 70 %}var(--danger){% elif risk_score >= 40 %}var(--warning){% else %}var(--success){% endif %}; font-weight: 700; font-size: 1.1em;">
+                            {{ "%.1f"|format(risk_score) }}%
+                        </span>
+                    </p>
+                    <p style="margin: 8px 0;">
+                        <strong>🔍 Analysis Method:</strong> {{ prediction.method if prediction.method else 'DSA' }}
+                    </p>
+                    {% if prediction.report_date %}
+                    <p style="margin: 8px 0;">
+                        <strong>📅 Analysis Date:</strong> {{ prediction.report_date.strftime('%B %d, %Y') if prediction.report_date else 'N/A' }}
+                    </p>
+                    {% endif %}
+                    {% if prediction.threshold_violations %}
+                    <div style="margin-top: 12px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 3px solid var(--danger);">
+                        <strong style="color: var(--danger);">⚠️ Abnormal Parameters Detected:</strong>
+                        <p style="margin: 5px 0 0 0; color: var(--text-main);">{{ prediction.threshold_violations|length }} parameter(s) outside normal range</p>
+                    </div>
+                    {% endif %}
+                    {% if prediction.severity_label %}
+                    <div style="margin-top: 12px; padding: 12px; background: rgba(8, 217, 214, 0.1); border-radius: 8px; border-left: 3px solid var(--accent);">
+                        <strong style="color: var(--accent);">📋 Severity Level:</strong>
+                        <p style="margin: 5px 0 0 0; color: var(--danger); font-weight: 700;">{{ prediction.severity_label }}</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
+
+            {% if predictions|length > 15 %}
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ url_for('patient.view_predictions') }}" class="btn">
+                    🔮 View All {{ predictions|length }} Predictions
+                </a>
+            </div>
+            {% endif %}
             {% else %}
             <div class="empty-message">
-                <p>No disease predictions available yet.</p>
-                <p style="font-size: 0.9em; margin-top: 10px;">Predictions will appear after medical analysis.</p>
+                <div style="font-size: 3em; margin-bottom: 15px;">🔮</div>
+                <p style="font-size: 1.1em; margin: 0 0 10px 0;">No disease predictions available yet</p>
+                <p style="font-size: 0.9em; opacity: 0.8;">Predictions will appear after medical analysis</p>
             </div>
             {% endif %}
         </div>
-
-        <!-- Action Buttons -->
-        <div class="section" style="text-align: center;">
+        
+        <!-- Quick Actions -->
+        <div class="section">
             <h2>📊 Quick Actions</h2>
-            <a href="{{ url_for('patient.view_reports') }}" class="btn">📄 View All Reports</a>
-            <a href="{{ url_for('patient.view_trends') }}" class="btn">📈 View Health Trends</a>
-            <a href="{{ url_for('patient.dashboard') }}" class="btn">🏠 Back to Dashboard</a>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <a href="{{ url_for('patient.view_reports') }}" class="btn" style="text-align: center; margin: 0;">
+                    📄 View All Reports
+                </a>
+                <a href="{{ url_for('patient.view_predictions') }}" class="btn" style="text-align: center; margin: 0;">
+                    🔮 View Predictions
+                </a>
+                <a href="{{ url_for('patient.view_trends') }}" class="btn" style="text-align: center; margin: 0;">
+                    📈 Health Trends
+                </a>
+                <a href="{{ url_for('patient.dashboard') }}" class="btn" style="text-align: center; margin: 0;">
+                    🏠 Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Download Options -->
+        <div class="section" style="background: linear-gradient(135deg, var(--nav-bg) 0%, var(--bg-card) 100%); border: 2px solid var(--accent);">
+            <h2>📥 Export Medical Summary</h2>
+            <div style="display: flex; align-items: center; gap: 30px;">
+                <div style="flex: 1;">
+                    <p style="color: var(--text-muted); margin-bottom: 12px; line-height: 1.6;">
+                        Export your complete medical summary as a PDF document for your records or to share with healthcare providers.
+                    </p>
+                    <p style="color: var(--accent); font-weight: 600; font-size: 0.95em; margin-bottom: 0;">
+                        ✅ Includes patient info, reports, and predictions<br>
+                        ✅ Print-optimized layout<br>
+                        ✅ Professional formatting
+                    </p>
+                </div>
+                <div style="text-align: center;">
+                    <a href="javascript:window.print()" class="btn" style="font-size: 1.1em; padding: 15px 30px;">
+                        🖨️ Print / Save as PDF
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </body>
-
 </html>
+
+

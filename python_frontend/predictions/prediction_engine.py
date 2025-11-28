@@ -536,13 +536,28 @@ class PredictionEngine:
         Analyze trends using Stack.
         Compares current data with historical data.
         """
+        # Create stack from historical data (last 5 reports) - using C++ Stack
+        history_stack = MedicalStack(max_size=5)
+        import json
+        for report in historical_data:
+            report_str = json.dumps(report)
+            history_stack.push(report_str)
+        
         trends = {}
         
-        if not historical_data:
+        if history_stack.is_empty():
             return trends
         
-        # Get most recent historical report (first in the list since it's ordered newest first)
-        last_report = historical_data[0]
+        # Get most recent report from stack
+        try:
+            last_report_str = history_stack.peek()
+            last_report = json.loads(last_report_str)
+        except:
+            # Fallback: use last item from historical_data
+            if historical_data:
+                last_report = historical_data[-1]
+            else:
+                return trends
         
         for param, current_value in current_data.items():
             if isinstance(current_value, (int, float)):

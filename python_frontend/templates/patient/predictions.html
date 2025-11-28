@@ -198,11 +198,16 @@
                     <div style="margin-top: 10px;">
                         <p><strong>⚠️ Abnormal Parameters:</strong></p>
                         <ul style="margin: 5px 0; padding-left: 20px;">
-                        {% for violation in prediction.threshold_violations %}
+                        {% for violation in prediction.threshold_violations[:6] %}
                             <li style="color: var(--text-muted); font-size: 0.9em;">
                                 {{ violation.parameter }}: {{ violation.value }} (Normal: {{ violation.normal_range }})
                             </li>
                         {% endfor %}
+                        {% if prediction.threshold_violations|length > 6 %}
+                            <li style="color: var(--text-muted); font-size: 0.85em; font-style: italic;">
+                                + {{ prediction.threshold_violations|length - 6 }} more abnormal parameter(s) not shown
+                            </li>
+                        {% endif %}
                         </ul>
                     </div>
                     {% endif %}

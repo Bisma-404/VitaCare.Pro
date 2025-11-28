@@ -358,26 +358,29 @@ def manage_symptoms():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get all unique symptoms from database
+        # Get all unique symptoms from database with disease category
         cursor.execute("""
-            SELECT DISTINCT symptom_name FROM symptoms
+            SELECT symptom_name, disease_category, description FROM symptoms
             ORDER BY symptom_name ASC
         """)
-        symptoms = [row['symptom_name'] for row in cursor.fetchall()]
+        symptoms = cursor.fetchall()
 
         # Initialize DSA SymptomManager (safe)
+        # Extract symptom names for DSA
+        symptom_names = [s['symptom_name'] for s in symptoms]
+        
         symptom_manager = None
         symptom_count = 0
         try:
             symptom_manager = SymptomManager()
             # load_symptoms may be heavy or fail if cpp_tree not compiled; guard it
-            symptom_manager.load_symptoms(symptoms)
-            symptom_count = getattr(symptom_manager, 'get_symptom_count', lambda: len(symptoms))()
+            symptom_manager.load_symptoms(symptom_names)
+            symptom_count = getattr(symptom_manager, 'get_symptom_count', lambda: len(symptom_names))()
         except Exception as inner_e:
             # Log and continue - show partial page with message
             print(f"SymptomManager load failed: {inner_e}")
             symptom_manager = None
-            symptom_count = len(symptoms)
+            symptom_count = len(symptom_names)
 
         # Get frequency analytics - join with symptoms table to get symptom_name
         cursor.execute("""
@@ -412,13 +415,17 @@ def manage_symptoms():
 @admin_bp.route('/symptoms/add', methods=['POST'])
 @admin_required
 def add_symptom():
-    """Add new symptom"""
+    """Add new symptom with disease category"""
     data = request.get_json()
     symptom_name = data.get('symptom_name', '').strip()
-    description = data.get('description', '')
+    disease_category = data.get('disease_category', '').strip()
+    description = data.get('description', '').strip()
     
     if not symptom_name:
         return jsonify({'error': 'Symptom name required'}), 400
+    
+    if not disease_category:
+        return jsonify({'error': 'Disease category required'}), 400
     
     try:
         conn = get_db_connection()
@@ -431,11 +438,11 @@ def add_symptom():
             conn.close()
             return jsonify({'error': 'Symptom already exists'}), 409
         
-        # Add symptom
+        # Add symptom with disease category
         cursor.execute("""
-            INSERT INTO symptoms (symptom_name, description)
-            VALUES (%s, %s)
-        """, (symptom_name, description))
+            INSERT INTO symptoms (symptom_name, disease_category, description)
+            VALUES (%s, %s, %s)
+        """, (symptom_name, disease_category, description))
         
         conn.commit()
         cursor.close()

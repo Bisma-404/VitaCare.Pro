@@ -8,8 +8,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <style>
-        /* Teal & black theme variables for this template */
-        :root { --accent: #008b8b; --accent-light: #30e3ca; --bg-main: #000; --bg-card: #0d0d0d; --text-main: #fff; --text-muted: #a7e0df; }
+        /* Standard theme variables matching app-wide design */
+        :root { 
+            --accent: #08D9D6; 
+            --accent-light: #2CE7DD; 
+            --bg-main: #181B20; 
+            --bg-card: #22262E; 
+            --nav-bg: #171A1F;
+            --text-main: #FFFFFF; 
+            --text-muted: #B8E2E7;
+            --shadow: 0 6px 36px 0 rgba(8, 217, 214, 0.13);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+        html.light {
+            --bg-main: #e8f4f5;
+            --bg-card: #f5fafa;
+            --nav-bg: #d0e9ea;
+            --accent: #047a7a;
+            --text-main: #0a1a1a;
+            --text-muted: #2d4a52;
+            --shadow: 0 10px 30px 0 rgba(4, 122, 122, 0.2);
+            --danger: #dc2626;
+            --warning: #d97706;
+            --success: #059669;
+        }
     </style>
     <style>
         body {
@@ -44,16 +68,22 @@
             box-sizing: border-box;
         }
 
-        .positive {
-            background: rgba(255, 68, 68, 0.2);
-            color: #ff6666;
-            border: 2px solid #ff6666;
+        .result-badge.high {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 2px solid var(--danger);
         }
 
-        .negative {
-            background: rgba(8, 217, 214, 0.2);
-            color: #08D9D6;
-            border: 2px solid #08D9D6;
+        .result-badge.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border: 2px solid var(--warning);
+        }
+
+        .result-badge.low {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 2px solid var(--success);
         }
 
         .details {
@@ -153,26 +183,23 @@
         <div class="card">
             <h1>{{ disease_name }} Result</h1>
 
-            {% set _label = severity_label|default(outcome) %}
-            {% if _label %}
-                {% set _l = _label.lower() %}
-                {% if _l.startswith('high') or 'high' in _l %}
-                    <div class="result-badge positive">⚠️ High Risk Detected</div>
-                {% elif 'moder' in _l or 'mod' in _l %}
-                    <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
-                {% else %}
-                    <div class="result-badge negative">✅ Low Risk / Normal</div>
-                {% endif %}
-            {% else %}
-                {% set risk = risk_score|default(0) %}
-                {% if risk >= 50 %}
-                <div class="result-badge positive">⚠️ High Risk Detected</div>
-                {% elif risk >= 30 %}
-                <div class="result-badge positive">⚠️ Moderate Risk Detected</div>
-                {% else %}
-                <div class="result-badge negative">✅ Low Risk / Normal</div>
-                {% endif %}
+            {% set risk = risk_score|default(0)|float %}
+            {% set risk_level = 'low' %}
+            {% set risk_emoji = '🟢' %}
+            {% set risk_label = 'Low Risk' %}
+            {% if risk >= 70 %}
+                {% set risk_level = 'high' %}
+                {% set risk_emoji = '🔴' %}
+                {% set risk_label = 'High Risk' %}
+            {% elif risk >= 40 %}
+                {% set risk_level = 'medium' %}
+                {% set risk_emoji = '🟡' %}
+                {% set risk_label = 'Medium Risk' %}
             {% endif %}
+            
+            <div class="result-badge {{ risk_level }}" style="border-left: 4px solid {% if risk_level == 'high' %}var(--danger){% elif risk_level == 'medium' %}var(--warning){% else %}var(--success){% endif %};">
+                {{ risk_emoji }} {{ risk_label }} - {{ "%.1f"|format(risk) }}%
+            </div>
 
             <p style="font-size: 1.2em;">{{ severity_label|default(outcome) }}</p>
             <p>{{ remark|default(severity_reason)|default('Based on the analysis of provided health metrics.') }}</p>
