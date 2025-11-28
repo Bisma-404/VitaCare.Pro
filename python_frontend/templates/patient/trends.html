@@ -252,33 +252,32 @@
         {% if trends %}
         <!-- Summary Cards -->
         <div class="summary-grid">
-            {% set increasing_count = trends.values()|selectattr('trend', 'equalto', 'increasing')|list|length %}
-            {% set decreasing_count = trends.values()|selectattr('trend', 'equalto', 'decreasing')|list|length %}
-            {% set stable_count = trends.values()|selectattr('trend', 'equalto', 'stable')|list|length %}
+            {% set improving = trends.values()|selectattr('trend', 'equalto', 'decreasing')|list|length %}
+            {% set worsening = trends.values()|selectattr('trend', 'equalto', 'increasing')|list|length %}
+            {% set stable = trends.values()|selectattr('trend', 'equalto', 'stable')|list|length %}
 
-            <div class="summary-card worsening">
+            <div class="summary-card improving">
                 <div class="summary-icon">📈</div>
-                <div class="summary-value">{{ increasing_count }}</div>
-                <div class="summary-label">Increasing Parameters</div>
+                <div class="summary-value">{{ improving }}</div>
+                <div class="summary-label">Improving Parameters</div>
             </div>
 
             <div class="summary-card stable">
                 <div class="summary-icon">➡️</div>
-                <div class="summary-value">{{ stable_count }}</div>
+                <div class="summary-value">{{ stable }}</div>
                 <div class="summary-label">Stable Parameters</div>
             </div>
 
-            <div class="summary-card improving">
+            <div class="summary-card worsening">
                 <div class="summary-icon">📉</div>
-                <div class="summary-value">{{ decreasing_count }}</div>
-                <div class="summary-label">Decreasing Parameters</div>
+                <div class="summary-value">{{ worsening }}</div>
+                <div class="summary-label">Worsening Parameters</div>
             </div>
         </div>
 
         <!-- Detailed Trends -->
         <div class="section">
-            <h2>📊 Parameter Trends Comparison</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px;">Comparing your latest report with the previous one</p>
+            <h2>📊 Parameter Trends</h2>
             {% for param, trend_data in trends.items() %}
             <div class="trend-item">
                 <div class="trend-info">
@@ -287,48 +286,139 @@
                         <strong>Current:</strong> {{ "%.2f"|format(trend_data.current) }} |
                         <strong>Previous:</strong> {{ "%.2f"|format(trend_data.previous) }} |
                         <strong>Change:</strong>
-                        <span style="color: {% if trend_data.trend == 'increasing' %}var(--danger){% elif trend_data.trend == 'decreasing' %}var(--success){% else %}var(--warning){% endif %}; font-weight: 700;">
-                            {% if trend_data.change >= 0 %}+{% endif %}{{ "%.2f"|format(trend_data.change) }}
-                            ({{ "%.1f"|format(trend_data.change_percent) }}%)
-                        </span>
+                        {% if trend_data.change >= 0 %}+{% endif %}{{ "%.2f"|format(trend_data.change) }}
+                        ({{ "%.1f"|format(trend_data.change_percent) }}%)
                     </div>
                 </div>
-                <div class="trend-indicator {% if trend_data.trend == 'increasing' %}up{% elif trend_data.trend == 'decreasing' %}down{% else %}stable{% endif %}">
+                <div class="trend-indicator {{ trend_data.trend }}">
                     {{ trend_data.symbol }}
                 </div>
             </div>
             {% endfor %}
         </div>
 
-        <!-- Historical Trends Chart -->
+        <!-- Visual Chart - Current vs Previous -->
         <div class="section">
-            <h2>📊 Historical Trends Over Time</h2>
+            <h2>📊 Latest vs Previous Comparison</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">
+                Side-by-side comparison of your most recent two reports
+            </p>
+            <div class="chart-container" style="height: 350px;">
+                <canvas id="trendsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Historical Timeline Chart -->
+        <div class="section">
+            <h2>📈 Historical Trends Over Time</h2>
             <p style="color: var(--text-muted); margin-bottom: 20px;">
                 Track how your health parameters have changed across all your reports
             </p>
             
             <div style="margin-bottom: 20px;">
-                <label for="paramSelect" style="color: var(--accent); font-weight: 600; margin-right: 10px;">Select Parameter:</label>
-                <select id="paramSelect" style="padding: 10px; border-radius: 8px; background: var(--nav-bg); color: var(--text-main); border: 2px solid var(--accent); font-size: 1em; cursor: pointer;">
+                <label for="paramSelect" style="color: var(--accent); font-weight: 600; margin-right: 10px; font-size: 1.05em;">Select Parameter:</label>
+                <select id="paramSelect" style="padding: 12px 16px; border-radius: 10px; background: var(--nav-bg); color: var(--text-main); border: 2px solid var(--accent); font-size: 1em; cursor: pointer; min-width: 250px; font-weight: 600;">
                     <option value="">-- Choose a parameter --</option>
                 </select>
             </div>
             
-            <div class="chart-container">
+            <div class="chart-container" style="height: 400px;">
                 <canvas id="historicalChart"></canvas>
             </div>
         </div>
 
+        <!-- Change Percentage Chart -->
+        <div class="section">
+            <h2>📉 Percentage Changes</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">
+                Visual representation of how much each parameter has changed (%)
+            </p>
+            <div class="chart-container" style="height: 350px;">
+                <canvas id="changeChart"></canvas>
+            </div>
+        </div>
+
         <script>
-            // Get all report data
+            // Prepare data for charts
+            const trendData = {{ trends|tojson }};
             const allReports = {{ report_data|tojson }};
-            
+            const labels = Object.keys(trendData);
+            const currentValues = labels.map(key => trendData[key].current);
+            const previousValues = labels.map(key => trendData[key].previous);
+            const changePercents = labels.map(key => trendData[key].change_percent);
+
             // Determine if dark mode
             const isDark = !document.documentElement.classList.contains('light');
             const textColor = isDark ? '#FFFFFF' : '#1A232E';
             const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 
-            // Extract all unique test parameters
+            // Chart 1: Bar Chart - Current vs Previous
+            const ctx1 = document.getElementById('trendsChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Previous Report',
+                            data: previousValues,
+                            backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                            borderColor: 'rgba(245, 158, 11, 1)',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Current Report',
+                            data: currentValues,
+                            backgroundColor: 'rgba(8, 217, 214, 0.7)',
+                            borderColor: 'rgba(8, 217, 214, 1)',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: textColor,
+                                font: { size: 14, weight: 700 },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: isDark ? '#22262E' : '#FFFFFF',
+                            titleColor: textColor,
+                            bodyColor: textColor,
+                            borderColor: '#08D9D6',
+                            borderWidth: 2,
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor, font: { size: 12 } },
+                            grid: { color: gridColor },
+                            title: { display: true, text: 'Value', color: textColor, font: { size: 13, weight: 'bold' } }
+                        },
+                        x: {
+                            ticks: { color: textColor, font: { size: 11 }, maxRotation: 45, minRotation: 30 },
+                            grid: { color: gridColor }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Historical Timeline (Line Chart with dropdown)
+            const ctx2 = document.getElementById('historicalChart').getContext('2d');
+            let historicalChartInstance = null;
+
+            // Extract all unique parameters
             const allParams = new Set();
             allReports.forEach(report => {
                 Object.keys(report.test_data || {}).forEach(param => allParams.add(param));
@@ -348,24 +438,18 @@
                 paramSelect.value = Array.from(allParams)[0];
             }
 
-            // Create chart
-            const ctx = document.getElementById('historicalChart').getContext('2d');
-            let chartInstance = null;
-
-            function updateChart(parameter) {
+            function updateHistoricalChart(parameter) {
                 if (!parameter) return;
 
-                // Sort reports by date (oldest to newest for timeline)
+                // Sort reports by date (oldest to newest)
                 const sortedReports = [...allReports].reverse();
 
-                // Extract dates and values for selected parameter
                 const dates = [];
                 const values = [];
                 
                 sortedReports.forEach(report => {
                     const value = report.test_data?.[parameter];
                     if (value !== null && value !== undefined) {
-                        // Format date
                         const date = new Date(report.date);
                         const formattedDate = date.toLocaleDateString('en-US', { 
                             month: 'short', 
@@ -377,13 +461,11 @@
                     }
                 });
 
-                // Destroy existing chart
-                if (chartInstance) {
-                    chartInstance.destroy();
+                if (historicalChartInstance) {
+                    historicalChartInstance.destroy();
                 }
 
-                // Create new chart
-                chartInstance = new Chart(ctx, {
+                historicalChartInstance = new Chart(ctx2, {
                     type: 'line',
                     data: {
                         labels: dates,
@@ -391,15 +473,17 @@
                             label: parameter,
                             data: values,
                             borderColor: '#08D9D6',
-                            backgroundColor: 'rgba(8, 217, 214, 0.1)',
+                            backgroundColor: 'rgba(8, 217, 214, 0.15)',
                             borderWidth: 3,
                             tension: 0.4,
                             fill: true,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
+                            pointRadius: 7,
+                            pointHoverRadius: 10,
                             pointBackgroundColor: '#08D9D6',
                             pointBorderColor: '#FFF',
-                            pointBorderWidth: 2
+                            pointBorderWidth: 3,
+                            pointHoverBackgroundColor: '#2CE7DD',
+                            pointHoverBorderColor: '#FFF'
                         }]
                     },
                     options: {
@@ -409,10 +493,8 @@
                             legend: {
                                 labels: {
                                     color: textColor,
-                                    font: {
-                                        size: 16,
-                                        weight: 700
-                                    }
+                                    font: { size: 16, weight: 700 },
+                                    padding: 15
                                 }
                             },
                             tooltip: {
@@ -421,14 +503,9 @@
                                 bodyColor: textColor,
                                 borderColor: '#08D9D6',
                                 borderWidth: 2,
-                                padding: 12,
-                                titleFont: {
-                                    size: 14,
-                                    weight: 'bold'
-                                },
-                                bodyFont: {
-                                    size: 13
-                                },
+                                padding: 14,
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 13 },
                                 callbacks: {
                                     label: function(context) {
                                         return parameter + ': ' + context.parsed.y.toFixed(2);
@@ -439,61 +516,88 @@
                         scales: {
                             y: {
                                 beginAtZero: false,
-                                ticks: {
-                                    color: textColor,
-                                    font: {
-                                        size: 12
-                                    }
-                                },
-                                grid: {
-                                    color: gridColor
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Value',
-                                    color: textColor,
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
+                                ticks: { color: textColor, font: { size: 12 } },
+                                grid: { color: gridColor },
+                                title: { display: true, text: 'Value', color: textColor, font: { size: 14, weight: 'bold' } }
                             },
                             x: {
-                                ticks: {
-                                    color: textColor,
-                                    font: {
-                                        size: 11
-                                    },
-                                    maxRotation: 45,
-                                    minRotation: 45
-                                },
-                                grid: {
-                                    color: gridColor
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Report Date',
-                                    color: textColor,
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
+                                ticks: { color: textColor, font: { size: 11 }, maxRotation: 45, minRotation: 45 },
+                                grid: { color: gridColor },
+                                title: { display: true, text: 'Report Date', color: textColor, font: { size: 14, weight: 'bold' } }
                             }
                         }
                     }
                 });
             }
 
-            // Update chart when parameter changes
-            paramSelect.addEventListener('change', (e) => {
-                updateChart(e.target.value);
+            paramSelect.addEventListener('change', (e) => updateHistoricalChart(e.target.value));
+            if (paramSelect.value) updateHistoricalChart(paramSelect.value);
+
+            // Chart 3: Percentage Change Chart (Horizontal Bar)
+            const ctx3 = document.getElementById('changeChart').getContext('2d');
+            const changeColors = changePercents.map(val => {
+                if (val > 5) return 'rgba(239, 68, 68, 0.7)'; // Worsening (red)
+                if (val < -5) return 'rgba(16, 185, 129, 0.7)'; // Improving (green)
+                return 'rgba(245, 158, 11, 0.7)'; // Stable (orange)
+            });
+            const changeBorderColors = changePercents.map(val => {
+                if (val > 5) return 'rgba(239, 68, 68, 1)';
+                if (val < -5) return 'rgba(16, 185, 129, 1)';
+                return 'rgba(245, 158, 11, 1)';
             });
 
-            // Initial chart load
-            if (paramSelect.value) {
-                updateChart(paramSelect.value);
-            }
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Change %',
+                        data: changePercents,
+                        backgroundColor: changeColors,
+                        borderColor: changeBorderColors,
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: textColor,
+                                font: { size: 14, weight: 700 },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: isDark ? '#22262E' : '#FFFFFF',
+                            titleColor: textColor,
+                            bodyColor: textColor,
+                            borderColor: '#08D9D6',
+                            borderWidth: 2,
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Change: ' + context.parsed.x.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: textColor, font: { size: 12 } },
+                            grid: { color: gridColor },
+                            title: { display: true, text: 'Percentage Change (%)', color: textColor, font: { size: 13, weight: 'bold' } }
+                        },
+                        y: {
+                            ticks: { color: textColor, font: { size: 12 } },
+                            grid: { color: gridColor }
+                        }
+                    }
+                }
+            });
         </script>
 
         {% else %}
