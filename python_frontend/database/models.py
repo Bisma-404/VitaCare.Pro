@@ -5,8 +5,9 @@ Data Access Objects for interacting with MySQL database.
 
 from database.db_connection import DatabaseConnection
 from mysql.connector import Error
-import hashlib
+from utils.password_hash import hash_password, verify_password
 from datetime import datetime
+import json
 
 
 class UserDAO:
@@ -15,7 +16,10 @@ class UserDAO:
     @staticmethod
     def create_user(username, password, role, name, phone=None, email=None, status='ACTIVE'):
         """Create a new user."""
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        # Use double-hash scheme (salt + digest stored together)
+        salt, digest = hash_password(password, rounds=1000)
+        # Store as salt$digest in the password column
+        hashed_password = f"{salt}${digest}"
         
         query = """
             INSERT INTO users (username, password, role, name, phone, email, status)
@@ -53,10 +57,33 @@ class UserDAO:
         user = UserDAO.get_user_by_username(username)
         if not user:
             return None
-        
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        if user['password'] == hashed_password:
-            return user
+        stored = user.get('password') or ''
+        if '$' not in stored:
+            # Legacy sha256 stored (no salt). Verify and migrate on success.
+            import hashlib
+            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            if stored == hashed_password:
+                # Migrate to new salted double-hash
+                salt, digest = hash_password(password, rounds=1000)
+                new_stored = f"{salt}${digest}"
+                try:
+                    DatabaseConnection.execute_query(
+                        "UPDATE users SET password = %s WHERE username = %s",
+                        (new_stored, username),
+                        fetch=False
+                    )
+                except Exception:
+                    pass
+                return user
+            return None
+
+        salt, digest = stored.split('$', 1)
+        try:
+            if verify_password(password, salt, digest, rounds=1000):
+                return user
+        except Exception:
+            return None
+
         return None
     
     @staticmethod
@@ -369,27 +396,49 @@ class PredictionDAO:
     """Data Access Object for predictions table."""
     
     @staticmethod
-    def create_prediction(report_id, disease_id, prediction_result, confidence_score, 
-                         method='DSA', dsa_result_id=None, ml_result_id=None):
-        """Create a prediction record."""
+    def create_prediction(report_id, disease_id, prediction_result, confidence_score,
+                         method='DSA', dsa_result_id=None, ml_result_id=None, 
+                         show_in_patient_panel=False, risk_score=None, severity_label=None,
+                         severity_reason=None, threshold_violations=None, symptom_matches=0):
+        """Create a prediction record with detailed analysis data."""
+        import json
+        from decimal import Decimal
+        
+        # Convert Decimal objects to floats for JSON serialization
+        def convert_decimals(obj):
+            if isinstance(obj, Decimal):
+                return float(obj)
+            elif isinstance(obj, dict):
+                return {k: convert_decimals(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_decimals(item) for item in obj]
+            else:
+                return obj
+        
+        # Convert threshold_violations to JSON-serializable format
+        threshold_violations_json = None
+        if threshold_violations:
+            threshold_violations_json = json.dumps(convert_decimals(threshold_violations))
+        
         query = """
             INSERT INTO predictions (report_id, disease_id, prediction_result, confidence_score, 
-                                   method, dsa_result_id, ml_result_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                   method, dsa_result_id, ml_result_id, show_in_patient_panel,
+                                   risk_score, severity_label, severity_reason, threshold_violations, symptom_matches)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         try:
             prediction_id = DatabaseConnection.execute_query(
                 query,
                 (report_id, disease_id, prediction_result, confidence_score, 
-                 method, dsa_result_id, ml_result_id),
+                 method, dsa_result_id, ml_result_id, show_in_patient_panel,
+                 risk_score, severity_label, severity_reason, 
+                 threshold_violations_json, symptom_matches),
                 fetch=False
             )
             return prediction_id
         except Error as e:
             print(f"Error creating prediction: {e}")
-            return None
-    
-    @staticmethod
+            return None    @staticmethod
     def get_predictions_by_report(report_id):
         """Get all predictions for a report."""
         query = """
@@ -403,16 +452,29 @@ class PredictionDAO:
     
     @staticmethod
     def get_predictions_by_patient(patient_id):
-        """Get all predictions for a patient."""
+        """Get all predictions for a patient that are flagged to show in patient panel with detailed analysis data.""" 
         query = """
             SELECT p.*, dm.disease_name, pr.created_at as report_date
             FROM predictions p
             JOIN disease_models dm ON p.disease_id = dm.id
             JOIN patient_reports pr ON p.report_id = pr.id
-            WHERE pr.patient_id = %s
+            WHERE pr.patient_id = %s AND p.show_in_patient_panel = TRUE
             ORDER BY pr.created_at DESC, p.confidence_score DESC
         """
-        return DatabaseConnection.execute_query(query, (patient_id,))
+        results = DatabaseConnection.execute_query(query, (patient_id,))
+        
+        # Parse JSON threshold_violations for each result
+        import json
+        for result in results:
+            if result.get('threshold_violations'):
+                try:
+                    result['threshold_violations'] = json.loads(result['threshold_violations'])
+                except:
+                    result['threshold_violations'] = []
+            else:
+                result['threshold_violations'] = []
+        
+        return results
 
 
 class LoginHistoryDAO:

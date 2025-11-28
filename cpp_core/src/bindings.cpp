@@ -3,12 +3,13 @@
 #include "decision_tree_simple.h"
 #include "../Include/dsa_structures.h"
 #include "../Include/advanced_dsa.h"
+#include "../Include/string_search.h"
 
 namespace py = pybind11;
 
-// Using-directive style - Concrete types for pybind (templates can't be directly bound)
-using StringStack = MedicalStack<std::string>;
-using StringQueue = MedicalQueue<std::string>;
+// Using-directive style - Concrete types for pybind
+using StringStack = ::StringStack;
+using StringQueue = ::StringQueue;
 using StringLinkedList = MedicalLinkedList<std::string>;
 
 PYBIND11_MODULE(cpp_tree, m) {
@@ -43,6 +44,7 @@ PYBIND11_MODULE(cpp_tree, m) {
         .def("put", &MedicalHashMap::put, "Insert or update key-value pair")
         .def("get", &MedicalHashMap::get, py::arg("key"), py::arg("default_val") = "", "Get value for key")
         .def("contains", &MedicalHashMap::contains, "Check if key exists")
+        .def("remove", &MedicalHashMap::remove, "Remove a key from the map")
         .def("clear", &MedicalHashMap::clear, "Clear all items")
         .def("size", &MedicalHashMap::size, "Get number of items")
         .def("keys", &MedicalHashMap::keys, "Get all keys")
@@ -186,4 +188,37 @@ PYBIND11_MODULE(cpp_tree, m) {
              "Calculate composite risk score from multiple factors")
         .def_static("rank_diseases_by_risk", &RiskScorer::rankDiseasesByRisk,
              "Rank diseases by risk score with composite multiplier");
+
+    // STRING SEARCH UTILITIES (KMP and Boyer-Moore)
+    m.def("kmp_contains", &kmp_contains, py::arg("text"), py::arg("pattern"),
+          "Return true if pattern exists in text (KMP)");
+
+    m.def("bm_contains", &bm_contains, py::arg("text"), py::arg("pattern"),
+          "Return true if pattern exists in text (Boyer-Moore bad-character)");
+
+    m.def("kmp_search_list", [](py::list items, const std::string &pattern) {
+        py::list out;
+        for (size_t i = 0; i < items.size(); ++i) {
+            try {
+                std::string s = py::str(items[i]);
+                if (kmp_contains(s, pattern)) out.append((int)i);
+            } catch (...) {
+                // ignore non-string items
+            }
+        }
+        return out;
+    }, py::arg("items"), py::arg("pattern"), "Return list of indices where pattern exists (KMP)");
+
+    m.def("bm_search_list", [](py::list items, const std::string &pattern) {
+        py::list out;
+        for (size_t i = 0; i < items.size(); ++i) {
+            try {
+                std::string s = py::str(items[i]);
+                if (bm_contains(s, pattern)) out.append((int)i);
+            } catch (...) {
+                // ignore non-string items
+            }
+        }
+        return out;
+    }, py::arg("items"), py::arg("pattern"), "Return list of indices where pattern exists (Boyer-Moore)");
 }

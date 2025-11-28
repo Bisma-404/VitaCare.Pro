@@ -71,6 +71,30 @@
         .nav-links a:hover {
             text-decoration: underline;
         }
+        @media (max-width: 768px) {
+            .nav-bar {
+                padding: 18px 0;
+                font-size: 1.1em;
+            }
+            .nav-links {
+                position: static;
+                justify-content: center;
+                margin-bottom: 10px;
+                padding: 0 10px;
+                flex-wrap: wrap;
+            }
+            .theme-switcher {
+                position: absolute;
+                top: 8px;
+                right: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+            .form-card {
+                padding: 25px;
+            }
+        }
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -114,6 +138,36 @@
             margin-top: -15px;
             margin-bottom: 20px;
         }
+        /* Polished upload box UI */
+        .upload-box {
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+            border: 1px solid rgba(8,217,214,0.06);
+            padding: 18px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(8,217,214,0.06);
+            margin-bottom: 12px;
+        }
+        .upload-area {
+            border: 2px dashed rgba(8,139,139,0.12);
+            border-radius: 10px;
+            padding: 22px;
+            text-align: left;
+            background: linear-gradient(90deg, rgba(8,217,214,0.02), rgba(0,0,0,0));
+            cursor: pointer;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            transition: all .18s ease-in-out;
+        }
+        .upload-area:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(8,217,214,0.04); }
+        .upload-area.dragover { background: rgba(8,217,214,0.03); border-color: var(--accent); }
+        .upload-area .upload-icon { font-size: 34px; }
+        .upload-area .upload-meta { flex:1 }
+        .upload-area .upload-text { color: var(--text-main); font-weight:700; font-size:1.02em; }
+        .upload-area .upload-hint { color: var(--text-muted); font-size:0.92em; margin-top:4px }
+        #staff-image-preview img { max-width: 280px; border-radius:8px; display:block; }
+        #staff-file-info { display:flex; gap:12px; align-items:center; }
+        .remove-btn { padding:6px 10px; border-radius:8px; border:none; background:#ff6b6b; color:#fff; cursor:pointer; }
         .btn {
             padding: 14px 30px;
             border-radius: 25px;
@@ -209,7 +263,19 @@
                 </select>
                 
                 <label for="report_file" class="form-label">Upload Medical Report (PDF/CSV/Image)</label>
-                <input type="file" class="form-control" id="report_file" name="report_file">
+                <div id="staff-upload-area" class="upload-area" style="margin-bottom:12px;">
+                    <div class="upload-icon" style="font-size:28px;">📁</div>
+                    <div class="upload-text" style="color:var(--text-muted);">Click to upload or drag and drop</div>
+                    <div class="upload-hint" style="color:var(--text-muted); font-size:0.9em; margin-top:6px;">Supported: PDF, JPG, PNG, BMP, TIFF, CSV (Max 16MB)</div>
+                </div>
+                <input type="file" class="form-control" id="report_file" name="report_file" style="display:none;" accept=".pdf,.csv,image/*">
+                <div id="staff-preview" style="display:none; margin-top:8px;">
+                    <div id="staff-file-info" class="form-text" style="display:flex; align-items:center; gap:12px;">
+                        <span id="staff-file-name"></span>
+                        <button type="button" id="staff-remove-btn" class="btn btn-secondary" style="padding:6px 10px;">Remove</button>
+                    </div>
+                    <div id="staff-image-preview" style="margin-top:8px; display:none;"></div>
+                </div>
                 <div class="form-text">Upload PDF report, CSV data, or medical images. System will extract parameters for diabetes, heart disease, and breast cancer analysis.</div>
                 
                 <label for="notes" class="form-label">Notes</label>
@@ -220,5 +286,44 @@
             </form>
         </div>
     </div>
+        <script>
+        (function(){
+            const uploadArea = document.getElementById('staff-upload-area');
+            const fileInput = document.getElementById('report_file');
+            const preview = document.getElementById('staff-preview');
+            const fileName = document.getElementById('staff-file-name');
+            const removeBtn = document.getElementById('staff-remove-btn');
+            const imgPreviewWrap = document.getElementById('staff-image-preview');
+
+            if(!uploadArea || !fileInput) return;
+
+            uploadArea.addEventListener('click', ()=> fileInput.click());
+
+            uploadArea.addEventListener('dragover', e=>{ e.preventDefault(); uploadArea.classList.add('dragover'); });
+            uploadArea.addEventListener('dragleave', ()=>{ uploadArea.classList.remove('dragover'); });
+            uploadArea.addEventListener('drop', e=>{ e.preventDefault(); uploadArea.classList.remove('dragover'); const files = e.dataTransfer.files; if(files.length) { fileInput.files = files; handleStaffFile(files[0]); } });
+
+            fileInput.addEventListener('change', ()=>{ if(fileInput.files.length) handleStaffFile(fileInput.files[0]); });
+
+            function handleStaffFile(file){
+                const allowed = ['application/pdf','text/csv','image/jpeg','image/png','image/bmp','image/tiff','image/jpg'];
+                if(!file) return;
+                if(file.size > 16 * 1024 * 1024){ alert('File too large. Max 16MB allowed.'); fileInput.value = ''; return; }
+                if(!allowed.includes(file.type) && !file.name.match(/\.csv$|\.pdf$/i)){
+                    alert('Unsupported file type. Please upload PDF, CSV or an image.'); fileInput.value = ''; return;
+                }
+                preview.style.display = 'block';
+                fileName.textContent = `${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+                // Show image preview for images
+                if(file.type.startsWith('image/')){
+                    const reader = new FileReader();
+                    reader.onload = function(e){ imgPreviewWrap.innerHTML = `<img src="${e.target.result}" style="max-width:100%; border-radius:8px;">`; imgPreviewWrap.style.display='block'; };
+                    reader.readAsDataURL(file);
+                } else { imgPreviewWrap.style.display='none'; imgPreviewWrap.innerHTML=''; }
+            }
+
+            removeBtn && removeBtn.addEventListener('click', ()=>{ fileInput.value=''; preview.style.display='none'; imgPreviewWrap.style.display='none'; imgPreviewWrap.innerHTML=''; });
+        })();
+        </script>
 </body>
 </html>

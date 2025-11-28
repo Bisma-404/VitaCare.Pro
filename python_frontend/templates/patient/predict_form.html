@@ -99,6 +99,17 @@
             color: var(--text-muted, #B8E2E7);
             text-decoration: none;
         }
+        /* OCR/tab styles copied and simplified from admin template */
+        .input-method-tabs { display:flex; gap:10px; margin-bottom:18px; }
+        .tab-btn { padding:10px 18px; background:transparent; border:none; color:var(--text-muted,#B8E2E7); font-weight:600; cursor:pointer; border-bottom:3px solid transparent; }
+        .tab-btn.active { color:var(--accent,#008b8b); border-bottom-color:var(--accent); }
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+        .file-upload-area { border:2px dashed rgba(8,139,139,0.18); border-radius:12px; padding:28px; text-align:center; background:var(--bg-card,#0d0d0d); cursor:pointer; }
+        .file-upload-area.dragover { background: rgba(8,139,139,0.06); border-color:var(--accent-light,#30e3ca); }
+        .file-input { display:none; }
+        .upload-icon { font-size:2.4em; margin-bottom:8px; color:var(--accent); }
+        .file-info { margin-top:10px; padding:8px; background:transparent; border-radius:8px; color:var(--text-muted); }
     </style>
 </head>
 
@@ -143,31 +154,100 @@
                 <p>Enter your health data for analysis</p>
             </div>
 
-            <form method="POST">
-                <div class="form-grid">
-                    {% for field in fields %}
-                    <div class="form-group">
-                        <label for="{{ field.name }}">{{ field.label }}</label>
-                        {% if field.type == 'select' %}
-                        <select name="{{ field.name }}" id="{{ field.name }}" required>
-                            {% for val, label in field.options %}
-                            <option value="{{ val }}" {% if val==field.default %}selected{% endif %}>{{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                        {% else %}
-                        <input type="number" step="{{ field.step|default('any') }}" name="{{ field.name }}"
-                            id="{{ field.name }}" value="{{ field.default }}" required>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
+            <form method="POST" enctype="multipart/form-data" id="patientPredictionForm">
+                <div class="input-method-tabs">
+                    <button type="button" class="tab-btn active" onclick="switchPatientTab('manual')">✍️ Manual Input</button>
+                    <button type="button" class="tab-btn" onclick="switchPatientTab('ocr')">📄 Upload Photo (OCR)</button>
                 </div>
+
+                <div id="manual-tab" class="tab-content active">
+                    <div class="form-grid">
+                        {% for field in fields %}
+                        <div class="form-group">
+                            <label for="{{ field.name }}">{{ field.label }}</label>
+                            {% if field.type == 'select' %}
+                            <select name="{{ field.name }}" id="{{ field.name }}" required>
+                                {% for val, label in field.options %}
+                                <option value="{{ val }}" {% if val==field.default %}selected{% endif %}>{{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <input type="number" step="{{ field.step|default('any') }}" name="{{ field.name }}"
+                                id="{{ field.name }}" value="{{ field.default }}" required>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div id="ocr-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>Upload Report Photo</label>
+                        <div id="patient-upload-area" class="file-upload-area" onclick="document.getElementById('patient_report_file').click()">
+                            <div class="upload-icon">📷</div>
+                            <p style="color: var(--text-muted); margin: 10px 0;">
+                                Click to upload or drag and drop<br>
+                                <small>Supports: JPG, PNG, BMP, TIFF (Max 16MB)</small>
+                            </p>
+                            <input type="file" name="report_file" id="patient_report_file" class="file-input"
+                                   accept="image/*" onchange="handlePatientFile(this)">
+                            <div id="patient-file-info" class="file-info" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit">Run Prediction</button>
             </form>
 
             <a href="{{ url_for('patient.disease_selection') }}" class="back-link">← Back to Selection</a>
         </div>
     </div>
+    <script>
+        function switchPatientTab(tab) {
+            // tab buttons
+            document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+            event.target.classList.add('active');
+            // tab contents
+            document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+            // if switching to manual, clear file input
+            if (tab === 'manual') {
+                const inp = document.getElementById('patient_report_file');
+                if (inp) { inp.value = ''; document.getElementById('patient-file-info').style.display = 'none'; }
+            }
+        }
+
+        function handlePatientFile(input) {
+            const file = input.files[0];
+            const info = document.getElementById('patient-file-info');
+            if (!file) { info.style.display='none'; return; }
+            const valid = ['image/jpeg','image/png','image/bmp','image/tiff','image/jpg'];
+            if (!valid.includes(file.type)) {
+                alert('Please upload a valid image (JPG/PNG/BMP/TIFF)');
+                input.value = '';
+                return;
+            }
+            info.style.display = 'block';
+            info.innerHTML = `<strong>Selected:</strong> ${file.name}<br><small>Size: ${(file.size/1024).toFixed(2)} KB</small> <button type="button" onclick="removePatientFile()" style="margin-left:10px; padding:6px 8px; border-radius:6px; border:none; background:#ff6b6b; color:#fff; cursor:pointer;">Remove</button>`;
+        }
+
+        function removePatientFile(){
+            const inp = document.getElementById('patient_report_file');
+            inp.value='';
+            const info = document.getElementById('patient-file-info');
+            info.style.display='none';
+        }
+
+        // Drag & drop for patient upload area
+        (function(){
+            const area = document.getElementById('patient-upload-area');
+            if (!area) return;
+            area.addEventListener('dragover', e=>{ e.preventDefault(); area.classList.add('dragover'); });
+            area.addEventListener('dragleave', ()=>{ area.classList.remove('dragover'); });
+            area.addEventListener('drop', e=>{ e.preventDefault(); area.classList.remove('dragover'); const files = e.dataTransfer.files; if(files.length){ document.getElementById('patient_report_file').files = files; handlePatientFile(document.getElementById('patient_report_file')); } });
+        })();
+    </script>
 </body>
 
 </html>

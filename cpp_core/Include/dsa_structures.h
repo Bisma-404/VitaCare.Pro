@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <queue>
 #include <stack>
 #include <list>
@@ -11,18 +10,46 @@
 #include <functional>
 #include <stdexcept>
 
+// Note: internal DSA implementations aim to avoid using STL containers
+// for core storage when possible. `MedicalHashMap` uses a custom
+// open-addressing double-hash table implemented with raw arrays.
+
 // ============================================================================
 // HASH MAP - For O(1) threshold lookups and parameter normalization
 // ============================================================================
 class MedicalHashMap {
 private:
-    std::unordered_map<std::string, std::string> map;
-    
+    // Open-addressing table (double hashing). We keep raw arrays for keys
+    // and values to avoid using std::unordered_map. Empty slots are marked
+    // with occupied = false, deleted = false.
+    struct Entry {
+        std::string key;
+        std::string value;
+        bool occupied;
+        bool deleted;
+        Entry() : key(), value(), occupied(false), deleted(false) {}
+    };
+
+    Entry* table;
+    int capacity; // m
+    int count;    // n
+    double max_load_factor;
+
+    // Helpers
+    unsigned long hash1(const std::string& s) const;
+    unsigned long hash2(const std::string& s) const;
+    void ensure_capacity_for_insert();
+    void rehash(int new_capacity);
+    int find_index(const std::string& key) const; // returns -1 if not found
+
 public:
-    MedicalHashMap();
+    MedicalHashMap(int initial_capacity = 17, double load_factor = 0.6);
+    ~MedicalHashMap();
+
     void put(const std::string& key, const std::string& value);
     std::string get(const std::string& key, const std::string& default_val = "");
     bool contains(const std::string& key);
+    bool remove(const std::string& key);
     void clear();
     int size();
     std::vector<std::string> keys();
@@ -32,36 +59,52 @@ public:
 // ============================================================================
 // STACK - For reverse chronological access to past reports (LIFO)
 // ============================================================================
-template<typename T>
-class MedicalStack {
+// ---------------------------------------------------------------------------
+// STRING STACK - array-backed stack for strings (avoids std::stack)
+// ---------------------------------------------------------------------------
+class StringStack {
 private:
-    std::stack<T> stack;
-    int maxSize;
-    
+    std::string* arr;
+    int capacity;
+    int topIndex; // points to next free slot
+    int maxSizeLimit;
+
+    void grow_if_needed();
+
 public:
-    MedicalStack(int max_size = 5);
-    void push(const T& item);
-    T pop();
-    T peek();
+    StringStack(int max_size = 5);
+    ~StringStack();
+    void push(const std::string& item);
+    std::string pop();
+    std::string peek();
     bool isEmpty();
     int size();
     void clear();
-    std::vector<T> getAll();
+    std::vector<std::string> getAll();
 };
 
 // ============================================================================
 // QUEUE - For managing patient request order (FIFO)
 // ============================================================================
-template<typename T>
-class MedicalQueue {
+// ---------------------------------------------------------------------------
+// STRING QUEUE - circular buffer for strings (avoids std::queue)
+// ---------------------------------------------------------------------------
+class StringQueue {
 private:
-    std::queue<T> queue;
-    
+    std::string* buffer;
+    int capacity;
+    int head; // index of first element
+    int tail; // index of one past last
+    int count;
+
+    void grow_if_needed();
+
 public:
-    MedicalQueue();
-    void enqueue(const T& item);
-    T dequeue();
-    T peek();
+    StringQueue();
+    ~StringQueue();
+    void enqueue(const std::string& item);
+    std::string dequeue();
+    std::string peek();
     bool isEmpty();
     int size();
     void clear();
@@ -84,17 +127,21 @@ struct PriorityItem {
 
 class MedicalPriorityQueue {
 private:
-    std::vector<PriorityItem> heap;
+    PriorityItem* heapArr;
+    int capacity;
+    int heapSize;
     bool maxHeap;
-    
+
+    void grow_heap();
     void heapifyUp(int index);
     void heapifyDown(int index);
     int parent(int i) { return (i - 1) / 2; }
     int left(int i) { return 2 * i + 1; }
     int right(int i) { return 2 * i + 2; }
-    
+
 public:
     MedicalPriorityQueue(bool max_heap = true);
+    ~MedicalPriorityQueue();
     void enqueue(const PriorityItem& item);
     PriorityItem dequeue();
     PriorityItem peek();
@@ -109,11 +156,16 @@ public:
 // ============================================================================
 class SymptomDiseaseGraph {
 private:
-    std::unordered_map<std::string, std::vector<std::string>> adjacencyList;
-    std::unordered_map<std::string, std::string> nodeTypes; // "symptom" or "disease"
-    
+    // Use MedicalHashMap to avoid STL containers in core internals.
+    // adjacencyMap maps node -> serialized neighbor list (DELIM separated)
+    MedicalHashMap* adjacencyMap;
+    // nodeTypeMap maps node -> node type string ("symptom" or "disease")
+    MedicalHashMap* nodeTypeMap;
+    const char DELIM = '\x1E'; // record separator unlikely in names
+
 public:
     SymptomDiseaseGraph();
+    ~SymptomDiseaseGraph();
     void addNode(const std::string& node, const std::string& type);
     void addEdge(const std::string& from, const std::string& to, bool bidirectional = false);
     std::vector<std::string> getNeighbors(const std::string& node);
@@ -162,10 +214,12 @@ public:
 // ============================================================================
 class MedicalSet {
 private:
-    std::unordered_map<std::string, bool> set;
-    
+    // Backed by MedicalHashMap (key -> "1") to avoid STL usage
+    MedicalHashMap* map;
+
 public:
     MedicalSet();
+    ~MedicalSet();
     void add(const std::string& item);
     void remove(const std::string& item);
     bool contains(const std::string& item);

@@ -3,7 +3,7 @@ Staff routes for hospital management system.
 Includes dashboard, report management, predictions, and CRUD operations.
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file
 from functools import wraps
 import sys
 import os
@@ -249,6 +249,43 @@ def upload_report():
     return render_template('staff/upload_report.html', patients=patients)
 
 
+@staff_bp.route('/reports/<int:report_id>')
+@staff_required
+def view_report_detail(report_id):
+    """View report details."""
+    report = PatientReportDAO.get_report_by_id(report_id)
+    if not report:
+        flash('Report not found', 'error')
+        return redirect(url_for('staff.view_reports'))
+    
+    # Get test data
+    tests = ReportTestDAO.get_tests_by_report(report_id)
+    
+    # Get predictions
+    predictions = PredictionDAO.get_predictions_by_report(report_id)
+    
+    return render_template('staff/report_detail.html', 
+                         report=report, 
+                         tests=tests, 
+                         predictions=predictions)
+
+
+@staff_bp.route('/reports/<int:report_id>/download')
+@staff_required
+def download_report_file(report_id):
+    """Download report file."""
+    report = PatientReportDAO.get_report_by_id(report_id)
+    if not report or not report['uploaded_file']:
+        flash('File not found', 'error')
+        return redirect(url_for('staff.view_report_detail', report_id=report_id))
+    
+    try:
+        return send_file(report['uploaded_file'], as_attachment=False)
+    except Exception as e:
+        flash(f'Error downloading file: {e}', 'error')
+        return redirect(url_for('staff.view_report_detail', report_id=report_id))
+
+
 @staff_bp.route('/reports/<int:report_id>/predict', methods=['GET', 'POST'])
 @staff_required
 def run_prediction(report_id):
@@ -290,7 +327,13 @@ def run_prediction(report_id):
                         disease_id=disease_id,
                         prediction_result=result['prediction'],
                         confidence_score=result.get('confidence', result.get('risk_score', 50)),
-                        method=result.get('method', 'C++ Decision Tree')
+                        method=result.get('method', 'C++ Decision Tree'),
+                        show_in_patient_panel=True,  # Automatically show doctor predictions in patient panel
+                        risk_score=result.get('risk_score'),
+                        severity_label=result.get('severity_label', 'Unknown'),
+                        severity_reason=result.get('severity_reason', ''),
+                        threshold_violations=result.get('threshold_violations', []),
+                        symptom_matches=result.get('symptom_matches', 0)
                     )
                     predictions.append(result)
         else:
@@ -336,7 +379,8 @@ def run_prediction(report_id):
                             disease_id=disease_id,
                             prediction_result=prediction,
                             confidence_score=75.0,  # Default confidence
-                            method='C++ Decision Tree'
+                            method='C++ Decision Tree',
+                            show_in_patient_panel=True  # Automatically show doctor predictions in patient panel
                         )
                         predictions.append({
                             'disease_type': prediction_type,
@@ -491,6 +535,20 @@ def _run_all_disease_models_cpp(test_data, symptoms_list):
                 risk_level = "LOW"
                 risk_emoji = "🟢"
             
+            # Run detailed DSA analysis for threshold violations and severity
+            try:
+                dsa_result = prediction_engine.analyze_with_dsa(test_data, symptoms_list, disease_type)
+                threshold_violations = dsa_result.get('threshold_violations', [])
+                symptom_matches = dsa_result.get('symptom_matches', 0)
+                severity_label = dsa_result.get('severity_label', 'Unknown')
+                severity_reason = dsa_result.get('severity_reason', '')
+            except Exception as e:
+                print(f"Error in DSA analysis for {disease_type}: {e}")
+                threshold_violations = []
+                symptom_matches = 0
+                severity_label = 'Unknown'
+                severity_reason = ''
+            
             results.append({
                 'disease_type': disease_type,
                 'disease_name': config['name'],
@@ -504,7 +562,11 @@ def _run_all_disease_models_cpp(test_data, symptoms_list):
                 'symptom_match': symptom_match,
                 'abnormal_values': abnormal_values,
                 'field_names': [f['label'] for f in config['fields']],
-                'method': 'C++ Decision Tree'
+                'method': 'C++ Decision Tree',
+                'threshold_violations': threshold_violations,
+                'symptom_matches': symptom_matches,
+                'severity_label': severity_label,
+                'severity_reason': severity_reason
             })
             
         except Exception as e:
@@ -584,8 +646,8 @@ def disease_selection():
 def predict_disease(disease_type):
     """
     Handle disease prediction for Staff.
-    GET: Render the input form.
-    POST: Process form data and show results.
+    GET: Render the input form with patient selection.
+    POST: Process form data, save prediction, and show results.
     """
     if disease_type not in DISEASE_CONFIG:
         flash('Invalid disease type', 'error')
@@ -675,6 +737,8 @@ def predict_disease(disease_type):
                     # Store extracted data in session and redirect to review page
                     session['ocr_extracted_data'] = test_data
                     session['disease_type_for_review'] = disease_type
+                    # Also store patient_id if selected
+                    session['selected_patient_id'] = request.form.get('patient_id')
                     return redirect(url_for('staff.ocr_review', disease_type=disease_type))
             
             # If no file uploaded, extract from manual form
@@ -690,7 +754,8 @@ def predict_disease(disease_type):
                             continue
             
             # Get symptoms (optional)
-            symptoms = [] 
+            symptoms_text = request.form.get('symptoms_text', '')
+            symptoms = [s.strip() for s in symptoms_text.split(',') if s.strip()] 
             
             # Run prediction
             result = prediction_engine.predict(test_data, symptoms, disease_type)
@@ -700,13 +765,54 @@ def predict_disease(disease_type):
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
             
-            # Fallback to dsa_result if ML replaced top-level keys
+            # Get DSA result details for template display
             dsa_sub = result.get('dsa_result', {})
             template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
             template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
             template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
             template_severity = result.get('severity_label', dsa_sub.get('severity_label', None))
             template_severity_reason = result.get('severity_reason', dsa_sub.get('severity_reason', ''))
+
+            # Save prediction if patient is selected
+            patient_id = request.form.get('patient_id')
+            if patient_id:
+                try:
+                    staff_id = session.get('user_id')
+                    # Create report
+                    report_id = PatientReportDAO.create_report(
+                        patient_id=int(patient_id),
+                        staff_id=staff_id,
+                        report_type='GENERAL',
+                        uploaded_file=None,
+                        notes=f"Staff prediction for {disease_type}"
+                    )
+                    
+                    # Get disease ID
+                    disease_id = _get_disease_id(disease_type)
+                    
+                    if report_id and disease_id:
+                        # Save prediction
+                        PredictionDAO.create_prediction(
+                            report_id=report_id,
+                            disease_id=disease_id,
+                            prediction_result=int(result.get('prediction', 0)),
+                            confidence_score=float(result.get('confidence', 0)),
+                            method=result.get('method', 'DSA'),
+                            show_in_patient_panel=True,
+                            risk_score=template_risk,
+                            severity_label=template_severity,
+                            severity_reason=template_severity_reason,
+                            threshold_violations=template_thresholds,
+                            symptom_matches=template_symptoms
+                        )
+                        
+                        # Save test data
+                        for param, value in test_data.items():
+                            ReportTestDAO.create_test(report_id, param, value)
+                            
+                except Exception as e:
+                    print(f"Error saving prediction: {e}")
+                    # Don't fail the request, just log error
 
             # Render result
             return render_template('staff/predict_result.html', 
@@ -728,10 +834,12 @@ def predict_disease(disease_type):
             return redirect(request.url)
             
     # GET request
+    patients = UserDAO.get_all_patients()
     return render_template('staff/predict_form.html', 
                          disease_name=config['name'],
                          fields=config['fields'],
-                         disease_type=disease_type)
+                         disease_type=disease_type,
+                         patients=patients)
 
 
 @staff_bp.route('/predict/<disease_type>/ocr-review', methods=['GET', 'POST'])
@@ -772,26 +880,72 @@ def ocr_review(disease_type):
                 except ValueError:
                     continue
         
-        # Clear session data
-        session.pop('ocr_extracted_data', None)
-        session.pop('disease_type_for_review', None)
+        # Get symptoms (optional)
+        symptoms_text = request.form.get('symptoms_text', '')
+        symptoms = [s.strip() for s in symptoms_text.split(',') if s.strip()] 
         
         # Run prediction
         try:
-            symptoms = []  # Optional
             result = prediction_engine.predict(test_data, symptoms, disease_type)
             
-            # Build features list in correct order matching config fields
+            # Build features list in correct order
             features = []
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
             
-            # Fallback to dsa_result if ML replaced top-level keys
+            # Get DSA result details for template display
             dsa_sub = result.get('dsa_result', {})
             template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
             template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
             template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
+            template_severity = result.get('severity_label', dsa_sub.get('severity_label', None))
+            template_severity_reason = result.get('severity_reason', dsa_sub.get('severity_reason', ''))
 
+            # Save prediction if patient is selected
+            patient_id = session.get('selected_patient_id')
+            if patient_id:
+                try:
+                    staff_id = session.get('user_id')
+                    # Create report
+                    report_id = PatientReportDAO.create_report(
+                        patient_id=int(patient_id),
+                        staff_id=staff_id,
+                        report_type='GENERAL',
+                        uploaded_file=None,
+                        notes=f"Staff prediction via OCR for {disease_type}"
+                    )
+                    
+                    # Get disease ID
+                    disease_id = _get_disease_id(disease_type)
+                    
+                    if report_id and disease_id:
+                        # Save prediction
+                        PredictionDAO.create_prediction(
+                            report_id=report_id,
+                            disease_id=disease_id,
+                            prediction_result=int(result.get('prediction', 0)),
+                            confidence_score=float(result.get('confidence', 0)),
+                            method=result.get('method', 'DSA'),
+                            show_in_patient_panel=True,
+                            risk_score=template_risk,
+                            severity_label=template_severity,
+                            severity_reason=template_severity_reason,
+                            threshold_violations=template_thresholds,
+                            symptom_matches=template_symptoms
+                        )
+                        
+                        # Save test data
+                        for param, value in test_data.items():
+                            ReportTestDAO.create_test(report_id, param, value)
+                            
+                except Exception as e:
+                    print(f"Error saving OCR prediction: {e}")
+
+            # Clear session data
+            session.pop('ocr_extracted_data', None)
+            session.pop('disease_type_for_review', None)
+            session.pop('selected_patient_id', None)
+            
             # Render result
             return render_template('staff/predict_result.html', 
                                  prediction=result.get('prediction', 0),
@@ -803,7 +957,10 @@ def ocr_review(disease_type):
                                  disease_type=disease_type,
                                  threshold_violations=template_thresholds,
                                  symptom_matches=template_symptoms,
-                                 risk_score=template_risk)
+                                 risk_score=template_risk,
+                                 severity_label=template_severity,
+                                 severity_reason=template_severity_reason)
+                                  
         except Exception as e:
             flash(f'Prediction failed: {str(e)}', 'error')
             return redirect(url_for('staff.predict_disease', disease_type=disease_type))

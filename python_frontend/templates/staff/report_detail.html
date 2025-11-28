@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report Details - VitaCare Pro</title>
+    <title>Report Details - Staff Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         html,
@@ -256,7 +256,7 @@
 <body>
     <div class="nav-bar">
         <div class="nav-links">
-            <a href="{{ url_for('patient.view_reports') }}">← Back to Reports</a>
+            <a href="{{ url_for('staff.view_reports') }}">← Back to Reports</a>
         </div>
         📄 Report Details
         <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()">🌙</button>
@@ -272,6 +272,10 @@
                     <div class="info-value">#{{ report.id }}</div>
                 </div>
                 <div class="info-item">
+                    <div class="info-label">Patient</div>
+                    <div class="info-value">{{ report.patient_name or 'N/A' }}</div>
+                </div>
+                <div class="info-item">
                     <div class="info-label">Report Type</div>
                     <div class="info-value">{{ report.report_type or 'General Medical Report' }}</div>
                 </div>
@@ -279,10 +283,6 @@
                     <div class="info-label">Date Created</div>
                     <div class="info-value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else
                         'N/A' }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Uploaded By</div>
-                    <div class="info-value">{{ report.staff_name or 'Medical Staff' }}</div>
                 </div>
             </div>
             {% if report.notes %}
@@ -292,6 +292,10 @@
                     report.notes }}</p>
             </div>
             {% endif %}
+
+            <div style="margin-top: 20px; text-align: right;">
+                <a href="{{ url_for('staff.run_prediction', report_id=report.id) }}" class="btn">🔬 Run Prediction</a>
+            </div>
         </div>
 
         <!-- Input Data Section -->
@@ -362,15 +366,27 @@
                         </div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Confidence Score</div>
-                        <div class="info-value">{{ "%.1f"|format(prediction.confidence_score) if
-                            prediction.confidence_score else 'N/A' }}%</div>
+                        <div class="info-label">Risk Score</div>
+                        <div class="info-value">{{ "%.1f"|format(prediction.risk_score) if prediction.risk_score else (
+                            "%.1f"|format(prediction.confidence_score) if prediction.confidence_score else 'N/A') }}%
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Severity</div>
+                        <div class="info-value">{{ prediction.severity_label if prediction.severity_label else 'N/A' }}
+                        </div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Analysis Method</div>
                         <div class="info-value">{{ prediction.method if prediction.method else 'DSA' }}</div>
                     </div>
                 </div>
+                {% if prediction.severity_reason %}
+                <div style="margin-top: 15px;">
+                    <div class="info-label">Reason</div>
+                    <div style="color: var(--text-muted);">{{ prediction.severity_reason }}</div>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -378,31 +394,8 @@
         <div class="section">
             <div class="empty-message">
                 <p>⚠️ No predictions have been generated for this report yet.</p>
-                <p style="font-size: 0.9em; margin-top: 10px;">Contact medical staff to run disease analysis.</p>
+                <a href="{{ url_for('staff.run_prediction', report_id=report.id) }}" class="btn">Run Analysis Now</a>
             </div>
-        </div>
-        {% endif %}
-
-        <!-- Trends Section -->
-        {% if trends %}
-        <div class="section">
-            <h2>📈 Health Trends</h2>
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Comparison with your previous report.</p>
-            <div class="info-grid">
-                {% for param, trend_data in trends.items() %}
-                <div class="info-item">
-                    <div class="info-label">{{ param }}</div>
-                    <div class="info-value" style="font-size: 1em;">
-                        {{ "%.1f"|format(trend_data.current) }}
-                        <span
-                            style="font-size: 0.8em; color: {% if trend_data.trend == 'improving' %}var(--success){% elif trend_data.trend == 'worsening' %}var(--danger){% else %}var(--warning){% endif %};">
-                            ({{ "+" if trend_data.change > 0 else "" }}{{ "%.1f"|format(trend_data.change) }})
-                        </span>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            <a href="{{ url_for('patient.view_trends') }}" class="btn">View Full Trends Analysis</a>
         </div>
         {% endif %}
 
@@ -415,30 +408,30 @@
                 {% if ext in ['jpg','jpeg','png','bmp','tiff'] %}
                 <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
                     <div style="flex:0 0 320px;"><img
-                            src="{{ url_for('patient.download_report_file', report_id=report.id) }}" alt="Attachment"
+                            src="{{ url_for('staff.download_report_file', report_id=report.id) }}" alt="Attachment"
                             style="max-width:100%;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.4);"></div>
                     <div style="flex:1;min-width:200px;">
                         <p><strong>File:</strong> {{ report.uploaded_file.rsplit('/',1)[-1] }}</p>
-                        <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank"
+                        <a href="{{ url_for('staff.download_report_file', report_id=report.id) }}" target="_blank"
                             class="btn">Open / Download</a>
                     </div>
                 </div>
                 {% elif ext == 'pdf' %}
                 <div style="margin-top:8px;">
-                    <iframe src="{{ url_for('patient.download_report_file', report_id=report.id) }}"
+                    <iframe src="{{ url_for('staff.download_report_file', report_id=report.id) }}"
                         style="width:100%;height:560px;border:0;border-radius:8px;" title="PDF Preview"></iframe>
                     <p style="margin-top:8px;"><a
-                            href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank"
+                            href="{{ url_for('staff.download_report_file', report_id=report.id) }}" target="_blank"
                             class="btn">Open / Download PDF</a></p>
                 </div>
                 {% else %}
                 <p><strong>File:</strong> {{ report.uploaded_file.rsplit('/',1)[-1] }}</p>
-                <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank"
+                <a href="{{ url_for('staff.download_report_file', report_id=report.id) }}" target="_blank"
                     class="btn">Download</a>
                 {% endif %}
             </div>
         </div>
-
+        {% endif %}
     </div>
 </body>
 

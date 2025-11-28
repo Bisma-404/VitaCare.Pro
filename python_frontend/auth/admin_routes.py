@@ -6,7 +6,7 @@ import json
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from functools import wraps
 from database.db_connection import get_db_connection
-import hashlib
+from utils.password_hash import hash_password
 import os
 import csv
 import re
@@ -111,40 +111,65 @@ def dashboard():
 def manage_users():
     """List all users by role"""
     role = request.args.get('role', 'all')
-    
+    q = (request.args.get('q') or '').strip()
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+    try:
+        page_size = int(request.args.get('page_size', 10))
+    except ValueError:
+        page_size = 10
+
+    offset = max(0, (page - 1)) * max(1, page_size)
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    
-    if role == 'all':
-        cursor.execute("""
-            SELECT id, username, email, role, created_at, phone
-            FROM users
-            ORDER BY created_at DESC
-        """)
-    else:
-        # Map lowercase role to uppercase ENUM
+
+    base_where = []
+    params = []
+
+    # Role filter
+    if role != 'all':
         role_upper = role.upper()
-        if role_upper == 'DOCTOR':
-            role_upper = 'DOCTOR'
-        elif role_upper == 'LAB_TECH':
-            role_upper = 'LAB_TECH'
-        elif role_upper == 'PATIENT':
+        # Normalize accepted role names
+        if role_upper not in ('DOCTOR', 'LAB_TECH', 'PATIENT', 'ADMIN'):
             role_upper = 'PATIENT'
-        elif role_upper == 'ADMIN':
-            role_upper = 'ADMIN'
-        
-        cursor.execute("""
-            SELECT id, username, email, role, created_at, phone
-            FROM users
-            WHERE role = %s
-            ORDER BY created_at DESC
-        """, (role_upper,))
-    
+        base_where.append('role = %s')
+        params.append(role_upper)
+
+    # Text search
+    if q:
+        like_q = f"%{q}%"
+        base_where.append('(username LIKE %s OR email LIKE %s OR phone LIKE %s)')
+        params.extend([like_q, like_q, like_q])
+
+    where_clause = ('WHERE ' + ' AND '.join(base_where)) if base_where else ''
+
+    # Total count for pagination
+    count_query = f"SELECT COUNT(*) as total FROM users {where_clause}"
+    cursor.execute(count_query, tuple(params) if params else None)
+    total_count = cursor.fetchone().get('total', 0)
+    total_pages = max(1, (total_count + max(1, page_size) - 1) // max(1, page_size))
+
+    # Fetch page
+    query = f"""
+        SELECT id, username, email, role, created_at, phone
+        FROM users
+        {where_clause}
+        ORDER BY created_at DESC
+        LIMIT %s OFFSET %s
+    """
+    exec_params = list(params) if params else []
+    exec_params.extend([page_size, offset])
+
+    cursor.execute(query, tuple(exec_params))
     users = cursor.fetchall()
     cursor.close()
     conn.close()
-    
-    return render_template('admin/manage_users.html', users=users, current_role=role)
+
+    return render_template('admin/manage_users.html', users=users, current_role=role,
+                           q=q, page=page, page_size=page_size, total_pages=total_pages, total_count=total_count)
 
 @admin_bp.route('/users/add', methods=['GET', 'POST'])
 @admin_required
@@ -189,8 +214,9 @@ def add_user():
             conn.close()
             return jsonify({'error': 'Email or username already registered'}), 409
         
-        # Hash password
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        # Hash password using the project's double-hash scheme
+        salt, digest = hash_password(password, rounds=1000)
+        password_hash = f"{salt}${digest}"
         
         # Insert user - need name field, use provided name or username as default
         cursor.execute("""
@@ -690,7 +716,8 @@ def predict_disease(disease_type):
                             test_data[field_name] = field.get('default', 0)
             
             # Get symptoms (optional)
-            symptoms = [] 
+            symptoms_text = request.form.get('symptoms_text', '')
+            symptoms = [s.strip() for s in symptoms_text.split(',') if s.strip()] 
             
             print(f"[DEBUG] Running prediction with test_data: {test_data}")
             # Run prediction

@@ -4,6 +4,7 @@ Includes dashboard, report history, predictions, and trend analysis.
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import send_from_directory, abort
 from functools import wraps
 import sys
 import os
@@ -15,6 +16,7 @@ from database.db_connection import DatabaseConnection
 from database.models import (
     PatientReportDAO, PredictionDAO, ReportTestDAO, PatientProfileDAO
 )
+from database.db_connection import DatabaseConnection
 from predictions.prediction_engine import PredictionEngine
 from utils.mapping import DISEASE_CONFIG
 
@@ -51,7 +53,7 @@ def dashboard():
     # Get recent reports
     reports = PatientReportDAO.get_reports_by_patient(patient_id)[:5]
     
-    # Get recent predictions
+    # Get recent predictions with stored detailed analysis data
     predictions = PredictionDAO.get_predictions_by_patient(patient_id)[:5]
     
     # Statistics
@@ -71,11 +73,29 @@ def dashboard():
 @patient_bp.route('/reports')
 @patient_required
 def view_reports():
-    """View all reports."""
+    """View all reports with enhanced data."""
     patient_id = session.get('user_id')
     reports = PatientReportDAO.get_reports_by_patient(patient_id)
     
+    # Enhance each report with additional data
+    for report in reports:
+        # Get test count
+        tests = ReportTestDAO.get_tests_by_report(report['id'])
+        report['test_count'] = len(tests)
+        
+        # Get predictions and calculate max risk score
+        predictions = PredictionDAO.get_predictions_by_report(report['id'])
+        report['prediction_count'] = len(predictions)
+        
+        # Calculate max risk score from predictions
+        if predictions:
+            max_risk = max([p.get('confidence_score', 0) for p in predictions])
+            report['max_risk_score'] = max_risk
+        else:
+            report['max_risk_score'] = None
+    
     return render_template('patient/reports.html', reports=reports)
+
 
 
 @patient_bp.route('/reports/<int:report_id>')
@@ -93,7 +113,7 @@ def view_report_detail(report_id):
     
     # Get test data
     tests = ReportTestDAO.get_tests_by_report(report_id)
-    test_data = {test['test_name']: test['test_value'] for test in tests}
+    test_data = {test['test_name']: float(test['test_value']) if test['test_value'] is not None else None for test in tests}
     
     # Get predictions
     predictions = PredictionDAO.get_predictions_by_report(report_id)
@@ -105,10 +125,18 @@ def view_report_detail(report_id):
     for r in all_reports:
         if r['id'] != report_id:
             hist_tests = ReportTestDAO.get_tests_by_report(r['id'])
-            hist_test_data = {t['test_name']: t['test_value'] for t in hist_tests}
+            hist_test_data = {t['test_name']: float(t['test_value']) if t['test_value'] is not None else None for t in hist_tests}
+            
+            # Convert datetime to string for JSON serialization
+            report_date = r['created_at']
+            if hasattr(report_date, 'strftime'):
+                report_date_str = report_date.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                report_date_str = str(report_date) if report_date else None
+            
             historical_data.append({
                 'report_id': r['id'],
-                'date': r['created_at'],
+                'date': report_date_str,
                 'test_data': hist_test_data
             })
     
@@ -123,10 +151,32 @@ def view_report_detail(report_id):
                          trends=trends)
 
 
+@patient_bp.route('/reports/<int:report_id>/file')
+@patient_required
+def download_report_file(report_id):
+    """Serve uploaded report file for viewing/downloading."""
+    report = PatientReportDAO.get_report_by_id(report_id)
+    if not report:
+        abort(404)
+    uploaded = report.get('uploaded_file')
+    if not uploaded:
+        flash('No file attached to this report', 'error')
+        return redirect(url_for('patient.view_report_detail', report_id=report_id))
+
+    # uploaded is stored as a path on disk (relative to project). Serve safely by filename.
+    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads'))
+    filename = os.path.basename(uploaded)
+    try:
+        return send_from_directory(upload_dir, filename, as_attachment=False)
+    except Exception as e:
+        print(f"Error serving file: {e}")
+        abort(404)
+
+
 @patient_bp.route('/predictions')
 @patient_required
 def view_predictions():
-    """View all predictions."""
+    """View all predictions with stored detailed analysis data."""
     patient_id = session.get('user_id')
     predictions = PredictionDAO.get_predictions_by_patient(patient_id)
     
@@ -146,24 +196,42 @@ def view_trends():
     report_data = []
     for report in reports:
         tests = ReportTestDAO.get_tests_by_report(report['id'])
-        test_data = {test['test_name']: test['test_value'] for test in tests}
+        # Convert Decimal to float for JSON serialization
+        test_data = {}
+        for test in tests:
+            test_value = test['test_value']
+            # Convert Decimal to float
+            if test_value is not None:
+                test_data[test['test_name']] = float(test_value)
+            else:
+                test_data[test['test_name']] = None
+        
+        # Convert datetime to string for JSON serialization
+        report_date = report['created_at']
+        if hasattr(report_date, 'strftime'):
+            report_date_str = report_date.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            report_date_str = str(report_date) if report_date else None
+        
         report_data.append({
             'report_id': report['id'],
-            'date': report['created_at'],
+            'date': report_date_str,
             'test_data': test_data
         })
     
     # Analyze trends if we have at least 2 reports
     trends = {}
     if len(report_data) >= 2:
-        latest = report_data[-1]
-        historical = report_data[:-1]
+        latest = report_data[0]  # Most recent report
+        historical = report_data[1:]  # Older reports (newest first)
         trends = prediction_engine.analyze_trends(latest['test_data'], historical)
     
     return render_template('patient/trends.html',
                          reports=reports,
                          report_data=report_data,
                          trends=trends)
+
+
 
 
 @patient_bp.route('/summary')
@@ -233,7 +301,52 @@ def predict_disease(disease_type):
             # Run prediction
             result = prediction_engine.predict(test_data, symptoms, disease_type)
             
-            # Fallback to dsa_result if ML replaced top-level keys
+            # Save prediction to database
+            try:
+                # Get disease_id from disease_type
+                disease_id = _get_disease_id_for_patient(disease_type)
+                
+                if disease_id:
+                    # Create a self-prediction report using existing schema
+                    # Use patient_id as staff_id for self-predictions (workaround)
+                    report_type_map = {
+                        'diabetes': 'DIABETES',
+                        'heart': 'HEART', 
+                        'breast_cancer': 'BREAST_CANCER'
+                    }
+                    db_report_type = report_type_map.get(disease_type, 'GENERAL')
+                    
+                    report_id = PatientReportDAO.create_report(
+                        patient_id=session.get('user_id'),
+                        staff_id=session.get('user_id'),  # Workaround: use patient as staff for self-predictions
+                        report_type=db_report_type,
+                        notes=f'Patient self-prediction for {disease_type}'
+                    )
+                    
+                    if report_id:
+                        # Save test data to report_tests
+                        for test_name, test_value in test_data.items():
+                            ReportTestDAO.create_test(
+                                report_id=report_id,
+                                test_name=test_name,
+                                test_value=float(test_value),
+                                reference_range='Patient Input',
+                                unit='Various'
+                            )
+                        
+                        # Save prediction
+                        PredictionDAO.create_prediction(
+                            report_id=report_id,
+                            disease_id=disease_id,
+                            prediction_result=result.get('prediction', 0),
+                            confidence_score=result.get('confidence', result.get('risk_score', 50.0)),
+                            method='DSA'
+                        )
+            except Exception as e:
+                print(f"Error saving patient prediction: {e}")
+                # Continue with displaying results even if saving fails
+            
+            # Get DSA result details for template display
             dsa_sub = result.get('dsa_result', {})
             template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
             template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
@@ -265,4 +378,26 @@ def predict_disease(disease_type):
                          disease_name=config['name'],
                          fields=config['fields'],
                          disease_type=disease_type)
+
+
+def _get_disease_id_for_patient(disease_type):
+    """Get disease ID for a given disease type."""
+    # Map disease_type to database disease_name/disease_code
+    disease_map = {
+        'diabetes': 'Diabetes',
+        'heart': 'Heart Disease', 
+        'breast_cancer': 'Breast Cancer'
+    }
+    
+    disease_name = disease_map.get(disease_type)
+    if not disease_name:
+        return None
+        
+    try:
+        query = "SELECT id FROM disease_models WHERE disease_name = %s OR disease_code = %s"
+        result = DatabaseConnection.execute_query(query, (disease_name, disease_type))
+        return result[0]['id'] if result else None
+    except Exception as e:
+        print(f"Error getting disease ID: {e}")
+        return None
 

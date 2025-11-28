@@ -219,7 +219,7 @@
     <div class="container">
         <div class="welcome-section">
             <h1>👨‍⚕️ Staff Dashboard</h1>
-            <p>Manage patient reports, upload new reports, and run predictions.</p>
+            <p>Manage patient reports and upload new reports.</p>
         </div>
         
         <div class="stats-grid">
@@ -231,10 +231,7 @@
                 <h3>📄 Total Reports</h3>
                 <div class="stat-value">{{ stats.total_reports }}</div>
             </div>
-            <div class="stat-card">
-                <h3>📊 Total Predictions</h3>
-                <div class="stat-value">{{ stats.total_predictions }}</div>
-            </div>
+            <!-- Total Predictions removed from dashboard per request -->
         </div>
         
         <div class="actions-grid">
@@ -263,7 +260,6 @@
                             <th>Patient</th>
                             <th>Type</th>
                             <th>Date</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -273,9 +269,6 @@
                             <td>{{ report.patient_name if report.patient_name else 'N/A' }}</td>
                             <td>{{ report.report_type }}</td>
                             <td>{{ report.created_at.strftime('%Y-%m-%d') if report.created_at else 'N/A' }}</td>
-                            <td>
-                                <a href="{{ url_for('staff.run_prediction', report_id=report.id) }}" class="btn-action">Predict</a>
-                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

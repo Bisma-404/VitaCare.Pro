@@ -89,6 +89,7 @@
 
         .admin-main {
             padding: 40px;
+            overflow-x: auto;
         }
 
         .btn {
@@ -189,7 +190,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            z-index: 9999;
             align-items: center;
             justify-content: center;
         }
@@ -239,6 +240,10 @@
             .admin-main {
                 padding: 20px;
             }
+
+            .admin-header h1 {
+                font-size: 1.1rem;
+            }
         }
 
         .admin-header {
@@ -270,16 +275,6 @@
 </head>
 
 <body>
-    <header class="admin-header">
-        <div>
-            <h1>Manage Users</h1>
-            <p class="muted">Create, edit, and manage system users</p>
-        </div>
-        <div class="admin-actions">
-            <button class="btn" onclick="openAddUserModal()">+ Add User</button>
-        </div>
-    </header>
-
     <div class="admin-container">
         <!-- Sidebar -->
         <div class="admin-sidebar">
@@ -295,8 +290,22 @@
 
         <!-- Main Content -->
         <div class="admin-main">
+            <header class="admin-header">
+                <div>
+                    <h1>Manage Users</h1>
+                    <p class="muted">Create, edit, and manage system users</p>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn" onclick="openAddUserModal()">+ Add User</button>
+                </div>
+            </header>
             <div class="search-box">
-                <input id="userSearch" type="search" placeholder="Search username, email, phone or role" oninput="applyFilterAndPaginate()">
+                <form id="searchForm" method="get" action="{{ url_for('admin.manage_users') }}" style="display:flex;gap:8px;width:100%">
+                    <input name="q" id="userSearch" type="search" placeholder="Search username, email, phone or role" value="{{ q or '' }}" style="flex:1;padding:12px;border-radius:8px;border:2px solid rgba(255,255,255,0.06);background:var(--bg-card);color:var(--text-main)">
+                    <input type="hidden" name="role" value="{{ current_role }}">
+                    <input type="hidden" name="page_size" value="{{ page_size or 10 }}">
+                    <button class="btn" type="submit">Search</button>
+                </form>
             </div>
 
             <table class="data-table" id="usersTable">
@@ -325,6 +334,22 @@
                 </tbody>
             </table>
             <div id="noResults" style="display:none;margin-top:18px;color:var(--text-muted)">No users match your search/filter.</div>
+
+            <!-- Server-side pagination controls -->
+            <div style="margin-top:18px;display:flex;gap:12px;align-items:center">
+                {% if total_count is defined %}
+                    <div style="color:var(--text-muted);">Showing {{ users|length }} of {{ total_count }} users</div>
+                    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                        {% if page and page > 1 %}
+                            <a class="btn" href="{{ url_for('admin.manage_users', q=q, role=current_role, page=page-1, page_size=page_size) }}">Previous</a>
+                        {% endif %}
+                        <div style="color:var(--text-muted);padding:6px 10px;border-radius:8px;background:transparent">Page {{ page }} / {{ total_pages }}</div>
+                        {% if page and page < total_pages %}
+                            <a class="btn" href="{{ url_for('admin.manage_users', q=q, role=current_role, page=page+1, page_size=page_size) }}">Next</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 

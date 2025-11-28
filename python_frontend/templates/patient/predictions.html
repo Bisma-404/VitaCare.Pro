@@ -22,6 +22,9 @@
             --text-main: #FFFFFF;
             --text-muted: #B8E2E7;
             --shadow: 0 6px 36px 0 #08d9d622;
+            --critical: #ff4444;
+            --medium: #ffaa00;
+            --low: #44ff44;
         }
         html.light {
             --bg-main: #fcfeff;
@@ -31,6 +34,9 @@
             --text-main: #1A232E;
             --text-muted: #455664;
             --shadow: 0 10px 30px 0 #18c0ce1e;
+            --critical: #cc0000;
+            --medium: #cc8800;
+            --low: #00cc00;
         }
         .nav-bar {
             width: 100vw; background: var(--nav-bg);
@@ -79,6 +85,41 @@
             padding: 20px;
             margin-bottom: 15px;
             border-left: 4px solid var(--accent);
+            transition: transform 0.3s;
+        }
+        .prediction-card:hover {
+            transform: translateY(-5px);
+        }
+        .prediction-card.critical {
+            border-left-color: var(--critical);
+        }
+        .prediction-card.medium {
+            border-left-color: var(--medium);
+        }
+        .prediction-card.low {
+            border-left-color: var(--low);
+        }
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: 700;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }
+        .risk-badge.critical {
+            background: rgba(255, 68, 68, 0.2);
+            color: var(--critical);
+        }
+        .risk-badge.medium {
+            background: rgba(255, 170, 0, 0.2);
+            color: var(--medium);
+        }
+        .risk-badge.low {
+            background: rgba(68, 255, 68, 0.2);
+            color: var(--low);
         }
         .prediction-card h3 {
             color: var(--accent);
@@ -122,20 +163,63 @@
     
     <div class="container">
         <div class="predictions-section">
-            <h2>All Predictions</h2>
+            <h2>Doctor Predictions</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">Predictions run by doctors on your medical reports</p>
             {% if predictions %}
                 {% for prediction in predictions %}
-                <div class="prediction-card">
-                    <h3>Report #{{ prediction.report_id }}</h3>
-                    <p><strong>Disease:</strong> {{ prediction.disease_name if prediction.disease_name else 'N/A' }}</p>
-                    <p><strong>Result:</strong> {{ 'High Risk' if prediction.prediction_result == 1 else 'Low Risk' }}</p>
+                {% set risk_score = prediction.risk_score or prediction.confidence_score or 0 %}
+                {% set risk_level = 'low' %}
+                {% set risk_emoji = '🟢' %}
+                {% set risk_label = 'Low Risk' %}
+                {% if risk_score >= 70 %}
+                    {% set risk_level = 'critical' %}
+                    {% set risk_emoji = '🔴' %}
+                    {% set risk_label = 'High Risk' %}
+                {% elif risk_score >= 40 %}
+                    {% set risk_level = 'medium' %}
+                    {% set risk_emoji = '🟡' %}
+                    {% set risk_label = 'Medium Risk' %}
+                {% endif %}
+                <div class="prediction-card {{ risk_level }}">
+                    <h3>{{ prediction.disease_name if prediction.disease_name else 'Unknown Disease' }}</h3>
+                    <div class="risk-badge {{ risk_level }}">
+                        {{ risk_emoji }} {{ risk_label }}
+                    </div>
+                    <p><strong>Result:</strong> 
+                        {% if prediction.prediction_result == 1 %}
+                            <span style="color: var(--critical); font-weight: bold;">{{ prediction.detailed_result.outcome_labels.get(prediction.prediction_result, 'Positive') if prediction.detailed_result else 'Positive' }}</span>
+                        {% else %}
+                            <span style="color: var(--low); font-weight: bold;">{{ prediction.detailed_result.outcome_labels.get(prediction.prediction_result, 'Negative') if prediction.detailed_result else 'Negative' }}</span>
+                        {% endif %}
+                    </p>
                     <p><strong>Confidence:</strong> {{ "%.1f"|format(prediction.confidence_score) if prediction.confidence_score else 'N/A' }}%</p>
-                    <p><strong>Date:</strong> {{ prediction.created_at.strftime('%Y-%m-%d %H:%M') if prediction.created_at else 'N/A' }}</p>
+                    <p><strong>Risk Score:</strong> {{ "%.1f"|format(risk_score) }}/100</p>
+                    {% if prediction.threshold_violations %}
+                    <div style="margin-top: 10px;">
+                        <p><strong>⚠️ Abnormal Parameters:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                        {% for violation in prediction.threshold_violations %}
+                            <li style="color: var(--text-muted); font-size: 0.9em;">
+                                {{ violation.parameter }}: {{ violation.value }} (Normal: {{ violation.normal_range }})
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if prediction.symptom_matches %}
+                    <p><strong>Symptom Matches:</strong> {{ prediction.symptom_matches }} relevant symptom(s) detected</p>
+                    {% endif %}
+                    {% if prediction.severity_label %}
+                    <p><strong>Severity:</strong> {{ prediction.severity_label }}</p>
+                    {% endif %}
+                    <p><strong>Report Date:</strong> {{ prediction.report_date.strftime('%Y-%m-%d %H:%M') if prediction.report_date else 'N/A' }}</p>
+                    <p><strong>Method:</strong> {{ prediction.method if prediction.method else 'C++ Decision Tree' }}</p>
+                    <p><strong>Report ID:</strong> #{{ prediction.report_id }}</p>
                 </div>
                 {% endfor %}
             {% else %}
             <div class="empty-state">
-                <p>No predictions available yet. Predictions will appear after staff processes your reports.</p>
+                <p>No doctor predictions available yet. Staff will run predictions on your reports and they will appear here automatically.</p>
             </div>
             {% endif %}
         </div>

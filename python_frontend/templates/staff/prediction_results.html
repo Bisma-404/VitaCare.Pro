@@ -22,6 +22,9 @@
             --text-main: #FFFFFF;
             --text-muted: #B8E2E7;
             --shadow: 0 6px 36px 0 #08d9d622;
+            --critical: #ff4444;
+            --medium: #ffaa00;
+            --low: #44ff44;
         }
         html.light {
             --bg-main: #fcfeff;
@@ -31,6 +34,9 @@
             --text-main: #1A232E;
             --text-muted: #455664;
             --shadow: 0 10px 30px 0 #18c0ce1e;
+            --critical: #cc0000;
+            --medium: #cc8800;
+            --low: #00cc00;
         }
         .nav-bar {
             width: 100vw; background: var(--nav-bg);
@@ -80,6 +86,41 @@
             padding: 25px;
             margin-bottom: 20px;
             border-left: 4px solid var(--accent);
+            transition: transform 0.3s;
+        }
+        .prediction-card:hover {
+            transform: translateY(-5px);
+        }
+        .prediction-card.critical {
+            border-left-color: var(--critical);
+        }
+        .prediction-card.medium {
+            border-left-color: var(--medium);
+        }
+        .prediction-card.low {
+            border-left-color: var(--low);
+        }
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .risk-badge.critical {
+            background: rgba(255, 68, 68, 0.2);
+            color: var(--critical);
+        }
+        .risk-badge.medium {
+            background: rgba(255, 170, 0, 0.2);
+            color: var(--medium);
+        }
+        .risk-badge.low {
+            background: rgba(68, 255, 68, 0.2);
+            color: var(--low);
         }
         .prediction-card h3 {
             color: var(--accent);
@@ -131,12 +172,33 @@
             <h2>Report #{{ report.id }} - Predictions</h2>
             {% if predictions %}
                 {% for pred in predictions %}
-                <div class="prediction-card">
+                <div class="prediction-card {{ pred.get('risk_level', 'low').lower() }}">
                     <h3>{{ pred.disease_name }} {{ pred.get('risk_emoji', '') }}</h3>
+                    <div class="risk-badge {{ pred.get('risk_level', 'low').lower() }}">
+                        {{ pred.get('risk_emoji', '') }} {{ pred.get('risk_level', 'Low Risk') }}
+                    </div>
                     <p><strong>Result:</strong> {{ pred.outcome }}</p>
-                    <p><strong>Risk Level:</strong> {{ pred.get('risk_level', 'N/A') }}</p>
+                    <p><strong>Risk Score:</strong> {{ "%.1f"|format(pred.get('risk_score', 0)) }}/100</p>
                     <p><strong>Confidence:</strong> {{ "%.1f"|format(pred.get('confidence', pred.get('risk_score', 0))) }}%</p>
                     <p><strong>Method:</strong> {{ pred.get('method', 'C++ Decision Tree') }}</p>
+                    {% if pred.get('severity_label') %}
+                    <p><strong>Severity:</strong> {{ pred.severity_label }}</p>
+                    {% endif %}
+                    {% if pred.get('threshold_violations') %}
+                    <div style="margin-top: 10px;">
+                        <p><strong>⚠️ Abnormal Parameters:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                        {% for violation in pred.threshold_violations %}
+                            <li style="color: var(--text-muted); font-size: 0.9em;">
+                                {{ violation.parameter }}: {{ violation.value }} (Normal: {{ violation.normal_range }})
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if pred.get('symptom_matches') %}
+                    <p><strong>Symptom Matches:</strong> {{ pred.symptom_matches }} relevant symptom(s) detected</p>
+                    {% endif %}
                 </div>
                 {% endfor %}
             {% else %}

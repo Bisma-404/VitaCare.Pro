@@ -218,7 +218,7 @@
     <div class="container">
         <div class="welcome-section">
             <h1>👤 Patient Dashboard</h1>
-            <p>View your medical reports and predictions. Only staff can upload new reports.</p>
+            <p>View your medical reports. Only staff can upload new reports.</p>
         </div>
         
         <div class="stats-grid">
@@ -227,7 +227,7 @@
                 <div class="stat-value">{{ stats.total_reports }}</div>
             </div>
             <div class="stat-card">
-                <h3>📊 Total Predictions</h3>
+                <h3>🔍 Total Predictions</h3>
                 <div class="stat-value">{{ stats.total_predictions }}</div>
             </div>
         </div>
@@ -235,9 +235,6 @@
         <div class="actions-grid">
             <a href="{{ url_for('patient.view_reports') }}" class="action-btn">
                 📄 My Reports
-            </a>
-            <a href="{{ url_for('patient.view_predictions') }}" class="action-btn">
-                📊 Predictions
             </a>
             <a href="{{ url_for('patient.view_trends') }}" class="action-btn">
                 📈 Trends
@@ -277,6 +274,50 @@
             {% else %}
             <div class="empty-state">
                 <p>No reports available yet. Staff will upload your reports.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="reports-section">
+            <h2>Doctor Predictions</h2>
+            {% if predictions %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Disease</th>
+                            <th>Prediction</th>
+                            <th>Risk Score</th>
+                            <th>Violations</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.disease_name }}</td>
+                            <td>
+                                {% if prediction.prediction_result == 1 %}
+                                    <span style="color: #ff6b6b;">🔴 High Risk</span>
+                                {% else %}
+                                    <span style="color: #51cf66;">🟢 Low Risk</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ "%.1f"|format(prediction.risk_score) if prediction.risk_score else 'N/A' }}</td>
+                            <td>{{ prediction.threshold_violations|length if prediction.threshold_violations else 0 }}</td>
+                            <td>{{ prediction.report_date.strftime('%Y-%m-%d %H:%M') if prediction.report_date else 'N/A' }}</td>
+                            <td>
+                                <a href="{{ url_for('patient.view_report_detail', report_id=prediction.report_id) }}" class="btn-view">View Report</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>No doctor predictions available yet. Staff will run predictions on your reports.</p>
             </div>
             {% endif %}
         </div>

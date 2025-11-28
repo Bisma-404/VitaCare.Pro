@@ -1,260 +1,408 @@
 #include "../Include/dsa_structures.h"
-#include <algorithm>
+#include <cmath>
+#include <cstring>
 
 // ============================================================================
-// HASH MAP Implementation
+// HASH MAP Implementation (custom open-addressing double hashing)
 // ============================================================================
-MedicalHashMap::MedicalHashMap() {}
+
+static bool is_prime(int x) {
+    if (x <= 1) return false;
+    if (x <= 3) return true;
+    if (x % 2 == 0) return false;
+    int r = static_cast<int>(std::sqrt(x));
+    for (int i = 3; i <= r; i += 2) {
+        if (x % i == 0) return false;
+    }
+    return true;
+}
+
+static int next_capacity(int current) {
+    // find next prime roughly double the size
+    int target = current * 2 + 1;
+    while (!is_prime(target)) target += 2;
+    return target;
+}
+
+// djb2 primary hash
+unsigned long MedicalHashMap::hash1(const std::string& s) const {
+    unsigned long hash = 5381UL;
+    for (unsigned char c : s) {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+    return hash;
+}
+
+// sdbm-like secondary hash (must be non-zero)
+unsigned long MedicalHashMap::hash2(const std::string& s) const {
+    unsigned long hash = 0UL;
+    for (unsigned char c : s) {
+        hash = c + (hash << 6) + (hash << 16) - hash;
+    }
+    // Make sure step is odd and non-zero
+    hash = (hash % 0x7fffffff) | 1UL;
+    return hash;
+}
+
+void MedicalHashMap::ensure_capacity_for_insert() {
+    double lf = static_cast<double>(count + 1) / static_cast<double>(capacity);
+    if (lf > max_load_factor) {
+        int new_cap = next_capacity(capacity);
+        rehash(new_cap);
+    }
+}
+
+void MedicalHashMap::rehash(int new_capacity) {
+    Entry* old_table = table;
+    int old_capacity = capacity;
+
+    table = new Entry[new_capacity];
+    capacity = new_capacity;
+    count = 0;
+
+    for (int i = 0; i < old_capacity; ++i) {
+        if (old_table[i].occupied && !old_table[i].deleted) {
+            put(old_table[i].key, old_table[i].value);
+        }
+    }
+
+    delete[] old_table;
+}
+
+int MedicalHashMap::find_index(const std::string& key) const {
+    if (capacity == 0) return -1;
+    unsigned long h1 = hash1(key) % static_cast<unsigned long>(capacity);
+    unsigned long h2v = hash2(key) % static_cast<unsigned long>(capacity);
+    if (h2v == 0) h2v = 1;
+
+    for (int i = 0; i < capacity; ++i) {
+        int idx = static_cast<int>((h1 + (unsigned long)i * h2v) % static_cast<unsigned long>(capacity));
+        if (!table[idx].occupied) {
+            // empty slot -> not present
+            return -1;
+        }
+        if (!table[idx].deleted && table[idx].occupied && table[idx].key == key) {
+            return idx;
+        }
+    }
+    return -1;
+}
+
+MedicalHashMap::MedicalHashMap(int initial_capacity, double load_factor)
+    : table(nullptr), capacity(0), count(0), max_load_factor(load_factor) {
+    if (initial_capacity < 3) initial_capacity = 3;
+    // find prime capacity
+    int cap = initial_capacity;
+    while (!is_prime(cap)) ++cap;
+    capacity = cap;
+    table = new Entry[capacity];
+}
+
+MedicalHashMap::~MedicalHashMap() {
+    if (table) delete[] table;
+}
 
 void MedicalHashMap::put(const std::string& key, const std::string& value) {
-    map[key] = value;
+    ensure_capacity_for_insert();
+    unsigned long h1v = hash1(key) % static_cast<unsigned long>(capacity);
+    unsigned long h2v = hash2(key) % static_cast<unsigned long>(capacity);
+    if (h2v == 0) h2v = 1;
+
+    int first_deleted = -1;
+    for (int i = 0; i < capacity; ++i) {
+        int idx = static_cast<int>((h1v + (unsigned long)i * h2v) % static_cast<unsigned long>(capacity));
+        if (!table[idx].occupied) {
+            if (first_deleted != -1) idx = first_deleted;
+            table[idx].key = key;
+            table[idx].value = value;
+            table[idx].occupied = true;
+            table[idx].deleted = false;
+            ++count;
+            return;
+        }
+        if (table[idx].occupied && !table[idx].deleted && table[idx].key == key) {
+            table[idx].value = value; // update
+            return;
+        }
+        if (table[idx].deleted && first_deleted == -1) {
+            first_deleted = idx;
+        }
+    }
+
+    // If we reach here, table is full (shouldn't if rehash worked), but handle
+    if (first_deleted != -1) {
+        table[first_deleted].key = key;
+        table[first_deleted].value = value;
+        table[first_deleted].occupied = true;
+        table[first_deleted].deleted = false;
+        ++count;
+    } else {
+        // force grow and insert
+        int newcap = next_capacity(capacity);
+        rehash(newcap);
+        put(key, value);
+    }
 }
 
 std::string MedicalHashMap::get(const std::string& key, const std::string& default_val) {
-    auto it = map.find(key);
-    return (it != map.end()) ? it->second : default_val;
+    int idx = find_index(key);
+    if (idx == -1) return default_val;
+    return table[idx].value;
 }
 
 bool MedicalHashMap::contains(const std::string& key) {
-    return map.find(key) != map.end();
+    return find_index(key) != -1;
+}
+
+bool MedicalHashMap::remove(const std::string& key) {
+    int idx = find_index(key);
+    if (idx == -1) return false;
+    // Mark as deleted but keep occupied=true to preserve probe chain
+    table[idx].value.clear();
+    table[idx].key.clear();
+    table[idx].deleted = true;
+    // do not set occupied=false because that would break probing
+    --count;
+    return true;
 }
 
 void MedicalHashMap::clear() {
-    map.clear();
+    for (int i = 0; i < capacity; ++i) {
+        table[i].key.clear();
+        table[i].value.clear();
+        table[i].occupied = false;
+        table[i].deleted = false;
+    }
+    count = 0;
 }
 
-int MedicalHashMap::size() {
-    return static_cast<int>(map.size());
-}
+int MedicalHashMap::size() { return count; }
 
 std::vector<std::string> MedicalHashMap::keys() {
-    std::vector<std::string> result;
-    for (const auto& pair : map) {
-        result.push_back(pair.first);
+    std::vector<std::string> out;
+    out.reserve(count);
+    for (int i = 0; i < capacity; ++i) {
+        if (table[i].occupied && !table[i].deleted) out.push_back(table[i].key);
     }
-    return result;
+    return out;
 }
 
 std::vector<std::string> MedicalHashMap::values() {
-    std::vector<std::string> result;
-    for (const auto& pair : map) {
-        result.push_back(pair.second);
+    std::vector<std::string> out;
+    out.reserve(count);
+    for (int i = 0; i < capacity; ++i) {
+        if (table[i].occupied && !table[i].deleted) out.push_back(table[i].value);
     }
-    return result;
+    return out;
 }
 
 // ============================================================================
-// STACK Implementation
+// STRING STACK Implementation (array-backed)
 // ============================================================================
-template<typename T>
-MedicalStack<T>::MedicalStack(int max_size) : maxSize(max_size) {}
+#include <algorithm>
 
-template<typename T>
-void MedicalStack<T>::push(const T& item) {
-    stack.push(item);
-    if (static_cast<int>(stack.size()) > maxSize) {
-        // Remove oldest (bottom) by recreating stack
-        std::stack<T> temp;
-        while (stack.size() > 1) {
-            temp.push(stack.top());
-            stack.pop();
-        }
-        stack.pop(); // Remove oldest
-        while (!temp.empty()) {
-            stack.push(temp.top());
-            temp.pop();
-        }
+void StringStack::grow_if_needed() {
+    if (topIndex < capacity) return;
+    int newcap = capacity * 2;
+    std::string* newarr = new std::string[newcap];
+    for (int i = 0; i < topIndex; ++i) newarr[i] = arr[i];
+    delete[] arr;
+    arr = newarr;
+    capacity = newcap;
+}
+
+StringStack::StringStack(int max_size)
+    : arr(nullptr), capacity(std::max(16, max_size)), topIndex(0), maxSizeLimit(max_size) {
+    if (capacity < 4) capacity = 4;
+    arr = new std::string[capacity];
+}
+
+StringStack::~StringStack() {
+    delete[] arr;
+}
+
+void StringStack::push(const std::string& item) {
+    // If we have a maxSizeLimit and we're at limit, shift left to drop oldest
+    if (maxSizeLimit > 0 && topIndex >= maxSizeLimit) {
+        // shift left by one
+        for (int i = 1; i < topIndex; ++i) arr[i - 1] = arr[i];
+        topIndex = topIndex - 1;
     }
+    grow_if_needed();
+    arr[topIndex++] = item;
 }
 
-template<typename T>
-T MedicalStack<T>::pop() {
-    if (stack.empty()) {
-        throw std::runtime_error("Stack is empty");
-    }
-    T item = stack.top();
-    stack.pop();
-    return item;
+std::string StringStack::pop() {
+    if (topIndex == 0) throw std::runtime_error("Stack is empty");
+    return arr[--topIndex];
 }
 
-template<typename T>
-T MedicalStack<T>::peek() {
-    if (stack.empty()) {
-        throw std::runtime_error("Stack is empty");
-    }
-    return stack.top();
+std::string StringStack::peek() {
+    if (topIndex == 0) throw std::runtime_error("Stack is empty");
+    return arr[topIndex - 1];
 }
 
-template<typename T>
-bool MedicalStack<T>::isEmpty() {
-    return stack.empty();
-}
+bool StringStack::isEmpty() { return topIndex == 0; }
 
-template<typename T>
-int MedicalStack<T>::size() {
-    return static_cast<int>(stack.size());
-}
+int StringStack::size() { return topIndex; }
 
-template<typename T>
-void MedicalStack<T>::clear() {
-    while (!stack.empty()) {
-        stack.pop();
-    }
-}
+void StringStack::clear() { topIndex = 0; }
 
-template<typename T>
-std::vector<T> MedicalStack<T>::getAll() {
-    std::vector<T> result;
-    std::stack<T> temp = stack;
-    while (!temp.empty()) {
-        result.insert(result.begin(), temp.top());
-        temp.pop();
-    }
-    return result;
+std::vector<std::string> StringStack::getAll() {
+    std::vector<std::string> out;
+    out.reserve(topIndex);
+    for (int i = 0; i < topIndex; ++i) out.push_back(arr[i]);
+    return out;
 }
 
 // ============================================================================
-// QUEUE Implementation
+// STRING QUEUE Implementation (circular buffer)
 // ============================================================================
-template<typename T>
-MedicalQueue<T>::MedicalQueue() {}
 
-template<typename T>
-void MedicalQueue<T>::enqueue(const T& item) {
-    queue.push(item);
-}
-
-template<typename T>
-T MedicalQueue<T>::dequeue() {
-    if (queue.empty()) {
-        throw std::runtime_error("Queue is empty");
+void StringQueue::grow_if_needed() {
+    if (count < capacity) return;
+    int newcap = capacity * 2;
+    std::string* newbuf = new std::string[newcap];
+    // copy existing elements in order
+    for (int i = 0; i < count; ++i) {
+        newbuf[i] = buffer[(head + i) % capacity];
     }
-    T item = queue.front();
-    queue.pop();
-    return item;
+    delete[] buffer;
+    buffer = newbuf;
+    capacity = newcap;
+    head = 0;
+    tail = count % capacity;
 }
 
-template<typename T>
-T MedicalQueue<T>::peek() {
-    if (queue.empty()) {
-        throw std::runtime_error("Queue is empty");
-    }
-    return queue.front();
+StringQueue::StringQueue() : buffer(nullptr), capacity(16), head(0), tail(0), count(0) {
+    buffer = new std::string[capacity];
 }
 
-template<typename T>
-bool MedicalQueue<T>::isEmpty() {
-    return queue.empty();
+StringQueue::~StringQueue() { delete[] buffer; }
+
+void StringQueue::enqueue(const std::string& item) {
+    grow_if_needed();
+    buffer[tail] = item;
+    tail = (tail + 1) % capacity;
+    ++count;
 }
 
-template<typename T>
-int MedicalQueue<T>::size() {
-    return static_cast<int>(queue.size());
+std::string StringQueue::dequeue() {
+    if (count == 0) throw std::runtime_error("Queue is empty");
+    std::string val = buffer[head];
+    head = (head + 1) % capacity;
+    --count;
+    return val;
 }
 
-template<typename T>
-void MedicalQueue<T>::clear() {
-    while (!queue.empty()) {
-        queue.pop();
-    }
+std::string StringQueue::peek() {
+    if (count == 0) throw std::runtime_error("Queue is empty");
+    return buffer[head];
 }
+
+bool StringQueue::isEmpty() { return count == 0; }
+
+int StringQueue::size() { return count; }
+
+void StringQueue::clear() { head = tail = count = 0; }
 
 // ============================================================================
 // PRIORITY QUEUE / HEAP Implementation
 // ============================================================================
-MedicalPriorityQueue::MedicalPriorityQueue(bool max_heap) : maxHeap(max_heap) {}
+MedicalPriorityQueue::MedicalPriorityQueue(bool max_heap)
+    : heapArr(nullptr), capacity(16), heapSize(0), maxHeap(max_heap) {
+    heapArr = new PriorityItem[capacity];
+}
+
+MedicalPriorityQueue::~MedicalPriorityQueue() {
+    if (heapArr) delete[] heapArr;
+}
+
+void MedicalPriorityQueue::grow_heap() {
+    int newcap = capacity * 2;
+    PriorityItem* newarr = new PriorityItem[newcap];
+    for (int i = 0; i < heapSize; ++i) newarr[i] = heapArr[i];
+    delete[] heapArr;
+    heapArr = newarr;
+    capacity = newcap;
+}
 
 void MedicalPriorityQueue::heapifyUp(int index) {
-    if (index == 0) return;
-    
-    int p = parent(index);
-    bool shouldSwap = maxHeap ? 
-        (heap[index].risk_score > heap[p].risk_score) :
-        (heap[index].risk_score < heap[p].risk_score);
-    
-    if (shouldSwap) {
-        std::swap(heap[index], heap[p]);
-        heapifyUp(p);
+    while (index > 0) {
+        int p = parent(index);
+        bool shouldSwap = maxHeap ?
+            (heapArr[index].risk_score > heapArr[p].risk_score) :
+            (heapArr[index].risk_score < heapArr[p].risk_score);
+        if (!shouldSwap) break;
+        PriorityItem tmp = heapArr[index];
+        heapArr[index] = heapArr[p];
+        heapArr[p] = tmp;
+        index = p;
     }
 }
 
 void MedicalPriorityQueue::heapifyDown(int index) {
-    int largest = index;
-    int l = left(index);
-    int r = right(index);
-    
-    if (l < static_cast<int>(heap.size())) {
-        bool shouldSwap = maxHeap ?
-            (heap[l].risk_score > heap[largest].risk_score) :
-            (heap[l].risk_score < heap[largest].risk_score);
-        if (shouldSwap) largest = l;
-    }
-    
-    if (r < static_cast<int>(heap.size())) {
-        bool shouldSwap = maxHeap ?
-            (heap[r].risk_score > heap[largest].risk_score) :
-            (heap[r].risk_score < heap[largest].risk_score);
-        if (shouldSwap) largest = r;
-    }
-    
-    if (largest != index) {
-        std::swap(heap[index], heap[largest]);
-        heapifyDown(largest);
+    while (true) {
+        int largest = index;
+        int l = left(index);
+        int r = right(index);
+        if (l < heapSize) {
+            bool shouldSwap = maxHeap ?
+                (heapArr[l].risk_score > heapArr[largest].risk_score) :
+                (heapArr[l].risk_score < heapArr[largest].risk_score);
+            if (shouldSwap) largest = l;
+        }
+        if (r < heapSize) {
+            bool shouldSwap = maxHeap ?
+                (heapArr[r].risk_score > heapArr[largest].risk_score) :
+                (heapArr[r].risk_score < heapArr[largest].risk_score);
+            if (shouldSwap) largest = r;
+        }
+        if (largest == index) break;
+        PriorityItem tmp = heapArr[index];
+        heapArr[index] = heapArr[largest];
+        heapArr[largest] = tmp;
+        index = largest;
     }
 }
 
 void MedicalPriorityQueue::enqueue(const PriorityItem& item) {
-    heap.push_back(item);
-    heapifyUp(heap.size() - 1);
+    if (heapSize >= capacity) grow_heap();
+    heapArr[heapSize] = item;
+    heapifyUp(heapSize);
+    ++heapSize;
 }
 
 PriorityItem MedicalPriorityQueue::dequeue() {
-    if (heap.empty()) {
-        throw std::runtime_error("Priority queue is empty");
-    }
-    
-    PriorityItem item = heap[0];
-    heap[0] = heap.back();
-    heap.pop_back();
-    
-    if (!heap.empty()) {
-        heapifyDown(0);
-    }
-    
+    if (heapSize == 0) throw std::runtime_error("Priority queue is empty");
+    PriorityItem item = heapArr[0];
+    heapArr[0] = heapArr[heapSize - 1];
+    --heapSize;
+    if (heapSize > 0) heapifyDown(0);
     return item;
 }
 
 PriorityItem MedicalPriorityQueue::peek() {
-    if (heap.empty()) {
-        throw std::runtime_error("Priority queue is empty");
-    }
-    return heap[0];
+    if (heapSize == 0) throw std::runtime_error("Priority queue is empty");
+    return heapArr[0];
 }
 
-bool MedicalPriorityQueue::isEmpty() {
-    return heap.empty();
-}
+bool MedicalPriorityQueue::isEmpty() { return heapSize == 0; }
 
-int MedicalPriorityQueue::size() {
-    return static_cast<int>(heap.size());
-}
+int MedicalPriorityQueue::size() { return heapSize; }
 
-void MedicalPriorityQueue::clear() {
-    heap.clear();
-}
+void MedicalPriorityQueue::clear() { heapSize = 0; }
 
 std::vector<PriorityItem> MedicalPriorityQueue::getAll() {
-    std::vector<PriorityItem> result = heap;
+    std::vector<PriorityItem> result;
+    result.reserve(heapSize);
+    for (int i = 0; i < heapSize; ++i) result.push_back(heapArr[i]);
     if (maxHeap) {
-        std::sort(result.begin(), result.end(), 
-            [](const PriorityItem& a, const PriorityItem& b) {
-                return a.risk_score > b.risk_score;
-            });
+        std::sort(result.begin(), result.end(),
+            [](const PriorityItem& a, const PriorityItem& b) { return a.risk_score > b.risk_score; });
     } else {
-        std::sort(result.begin(), result.end(), 
-            [](const PriorityItem& a, const PriorityItem& b) {
-                return a.risk_score < b.risk_score;
-            });
+        std::sort(result.begin(), result.end(),
+            [](const PriorityItem& a, const PriorityItem& b) { return a.risk_score < b.risk_score; });
     }
     return result;
 }
@@ -262,28 +410,81 @@ std::vector<PriorityItem> MedicalPriorityQueue::getAll() {
 // ============================================================================
 // GRAPH Implementation
 // ============================================================================
-SymptomDiseaseGraph::SymptomDiseaseGraph() {}
+SymptomDiseaseGraph::SymptomDiseaseGraph() {
+    adjacencyMap = new MedicalHashMap();
+    nodeTypeMap = new MedicalHashMap();
+}
+
+SymptomDiseaseGraph::~SymptomDiseaseGraph() {
+    if (adjacencyMap) delete adjacencyMap;
+    if (nodeTypeMap) delete nodeTypeMap;
+}
+
+static void split_serialized(const std::string& s, char delim, std::vector<std::string>& out) {
+    out.clear();
+    if (s.empty()) return;
+    std::string cur;
+    for (char c : s) {
+        if (c == delim) {
+            out.push_back(cur);
+            cur.clear();
+        } else cur.push_back(c);
+    }
+    if (!cur.empty()) out.push_back(cur);
+}
+
+static std::string join_serialized(const std::vector<std::string>& v, char delim) {
+    std::string s;
+    bool first = true;
+    for (const auto& it : v) {
+        if (!first) s.push_back(delim);
+        s += it;
+        first = false;
+    }
+    return s;
+}
 
 void SymptomDiseaseGraph::addNode(const std::string& node, const std::string& type) {
-    if (adjacencyList.find(node) == adjacencyList.end()) {
-        adjacencyList[node] = std::vector<std::string>();
-        nodeTypes[node] = type;
+    if (!nodeTypeMap->contains(node)) {
+        nodeTypeMap->put(node, type);
+        adjacencyMap->put(node, "");
     }
 }
 
 void SymptomDiseaseGraph::addEdge(const std::string& from, const std::string& to, bool bidirectional) {
     addNode(from, "symptom");
     addNode(to, "disease");
-    
-    adjacencyList[from].push_back(to);
+
+    // get existing neighbors
+    std::string ser = adjacencyMap->get(from, "");
+    std::vector<std::string> neigh;
+    split_serialized(ser, DELIM, neigh);
+    // avoid duplicates
+    bool found = false;
+    for (const auto& n : neigh) if (n == to) { found = true; break; }
+    if (!found) {
+        neigh.push_back(to);
+        adjacencyMap->put(from, join_serialized(neigh, DELIM));
+    }
+
     if (bidirectional) {
-        adjacencyList[to].push_back(from);
+        std::string ser2 = adjacencyMap->get(to, "");
+        std::vector<std::string> neigh2;
+        split_serialized(ser2, DELIM, neigh2);
+        bool found2 = false;
+        for (const auto& n : neigh2) if (n == from) { found2 = true; break; }
+        if (!found2) {
+            neigh2.push_back(from);
+            adjacencyMap->put(to, join_serialized(neigh2, DELIM));
+        }
     }
 }
 
 std::vector<std::string> SymptomDiseaseGraph::getNeighbors(const std::string& node) {
-    auto it = adjacencyList.find(node);
-    return (it != adjacencyList.end()) ? it->second : std::vector<std::string>();
+    std::string ser = adjacencyMap->get(node, "");
+    std::vector<std::string> neigh;
+    split_serialized(ser, DELIM, neigh);
+    return neigh;
 }
 
 std::vector<std::string> SymptomDiseaseGraph::getDiseasesForSymptom(const std::string& symptom) {
@@ -292,35 +493,32 @@ std::vector<std::string> SymptomDiseaseGraph::getDiseasesForSymptom(const std::s
 
 std::vector<std::string> SymptomDiseaseGraph::getSymptomsForDisease(const std::string& disease) {
     std::vector<std::string> symptoms;
-    for (const auto& pair : adjacencyList) {
-        if (nodeTypes[pair.first] == "symptom") {
-            for (const auto& neighbor : pair.second) {
-                if (neighbor == disease) {
-                    symptoms.push_back(pair.first);
-                    break;
-                }
-            }
+    std::vector<std::string> keys = adjacencyMap->keys();
+    for (const auto& key : keys) {
+        if (nodeTypeMap->get(key, "") == "symptom") {
+            std::vector<std::string> neigh;
+            split_serialized(adjacencyMap->get(key, ""), DELIM, neigh);
+            for (const auto& n : neigh) if (n == disease) { symptoms.push_back(key); break; }
         }
     }
     return symptoms;
 }
 
 bool SymptomDiseaseGraph::hasNode(const std::string& node) {
-    return adjacencyList.find(node) != adjacencyList.end();
+    return nodeTypeMap->contains(node);
 }
 
 std::string SymptomDiseaseGraph::getNodeType(const std::string& node) {
-    auto it = nodeTypes.find(node);
-    return (it != nodeTypes.end()) ? it->second : "";
+    return nodeTypeMap->get(node, "");
 }
 
 void SymptomDiseaseGraph::clear() {
-    adjacencyList.clear();
-    nodeTypes.clear();
+    adjacencyMap->clear();
+    nodeTypeMap->clear();
 }
 
 int SymptomDiseaseGraph::size() {
-    return static_cast<int>(adjacencyList.size());
+    return nodeTypeMap->size();
 }
 
 // ============================================================================
@@ -431,38 +629,38 @@ T MedicalLinkedList<T>::get(int index) {
 // ============================================================================
 // SET Implementation
 // ============================================================================
-MedicalSet::MedicalSet() {}
+MedicalSet::MedicalSet() {
+    map = new MedicalHashMap();
+}
+
+MedicalSet::~MedicalSet() {
+    if (map) delete map;
+}
 
 void MedicalSet::add(const std::string& item) {
-    set[item] = true;
+    map->put(item, "1");
 }
 
 void MedicalSet::remove(const std::string& item) {
-    set.erase(item);
+    map->remove(item);
 }
 
 bool MedicalSet::contains(const std::string& item) {
-    return set.find(item) != set.end();
+    return map->contains(item);
 }
 
 void MedicalSet::clear() {
-    set.clear();
+    map->clear();
 }
 
 int MedicalSet::size() {
-    return static_cast<int>(set.size());
+    return map->size();
 }
 
 std::vector<std::string> MedicalSet::toVector() {
-    std::vector<std::string> result;
-    for (const auto& pair : set) {
-        result.push_back(pair.first);
-    }
-    return result;
+    return map->keys();
 }
 
 // Explicit template instantiations for pybind
-template class MedicalStack<std::string>;
-template class MedicalQueue<std::string>;
 template class MedicalLinkedList<std::string>;
 

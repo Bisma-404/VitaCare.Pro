@@ -15,7 +15,7 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from utils.dsa_structures import Stack, PriorityQueue, MedicalHashMap
+from utils.cpp_dsa_wrapper import Stack, MedicalPriorityQueue, MedicalHashMap
 from utils.medical_mappings import (
     normalize_parameter_name,
     get_diseases_for_symptom,
