@@ -1,6 +1,6 @@
 """
-Prediction Engine integrating DSA rules and ML fallback.
-Uses DSA structures first, falls back to ML if inconclusive.
+Prediction Engine using pure DSA-based analysis.
+No ML fallback - all predictions based on custom data structures and algorithms.
 Enhanced with advanced sorting and risk scoring algorithms.
 """
 
@@ -18,15 +18,13 @@ from utils.cpp_dsa_wrapper import (
     SymptomDiseaseGraphWrapper as SymptomDiseaseGraph,
     MedicalSet
 )
-from dsa_engine.arrays import MedicalArray
-from dsa_engine.linked_list import MedicalLinkedList
-from dsa_engine.trees import DecisionTree
+# Note: Python fallback DSA modules removed. Use C++ DSAs via `utils.cpp_dsa_wrapper`.
 
 from database.models import DiseaseThresholdDAO, PatientReportDAO
 from utils.mapping import get_disease_config
 import csv
 
-# Import C++ tree module for ML fallback and advanced DSA
+# Import C++ DSA module only (no ML)
 try:
     import cpp_tree
     from cpp_tree import MedicalSorting, RiskScorer, RiskFactors, SymptomManager
@@ -38,14 +36,13 @@ except ImportError:
 
 
 class PredictionEngine:
-    """Main prediction engine combining DSA and ML."""
+    """Pure DSA-based prediction engine."""
     
     def __init__(self):
         """Initialize prediction engine."""
         # Initialize DSA structures (using C++ implementations)
         self.threshold_map = MedicalHashMap()  # Disease thresholds (C++ HashMap)
         self.symptom_graph = SymptomDiseaseGraph()  # Symptom-disease relationships (C++ Graph)
-        self.decision_tree = DecisionTree()  # Decision rules
         self.priority_heap = MedicalPriorityQueue(max_heap=True)  # Disease ranking (C++ PriorityQueue)
         
         # Load thresholds from database
@@ -190,17 +187,14 @@ class PredictionEngine:
         Analyze using DSA structures (primary method).
         Returns: (result, confidence, method_used)
         """
-        # Convert test data to array
-        test_array = MedicalArray()
-        for key, value in test_data.items():
-            test_array.append({'param': key, 'value': value})
-        
+        # Convert test data to a list of param/value dicts
+        test_array = [{'param': k, 'value': v} for k, v in test_data.items()]
+
         # Check thresholds using HashMap
         threshold_violations = []
         risk_score = 0
-        
-        for i in range(len(test_array)):
-            test = test_array.get(i)
+
+        for test in test_array:
             param = test['param']
             value = test['value']
             
@@ -216,7 +210,7 @@ class PredictionEngine:
                     threshold_violations.append({
                         'parameter': param,
                         'value': value,
-                        'normal_range': f"{min_val}-{max_val}"
+                        'normal_range': f"{min_val}-{max_val} {threshold.get('unit', '')}".strip()
                     })
                     risk_score += 15  # reduced weight to make thresholds less sensitive
         
@@ -448,192 +442,14 @@ class PredictionEngine:
         
         return None
     
-    def analyze_with_ml(self, test_data, disease_type):
-        """
-        Analyze using ML model (fallback method).
-        Returns: (result, confidence, method_used)
-        """
-        if cpp_tree is None:
-            return None
-
-        def get_remarks(self, disease_type, prediction, features):
-            """Generate human-friendly remark text for a prediction.
-            Logic adapted from the Version 3 implementation to provide clearer
-            messages for diabetes, heart disease and breast cancer.
-            """
-            try:
-                # Build a name->value map using the fields order when possible
-                config = get_disease_config(disease_type)
-                name_map = {}
-                if config and 'fields' in config:
-                    for idx, field in enumerate(config['fields']):
-                        fname = field['name']
-                        if idx < len(features):
-                            name_map[fname] = features[idx]
-                # DIABETES
-                if disease_type == 'diabetes':
-                    glucose = float(name_map.get('glucose', 0)) if 'glucose' in name_map else (features[1] if len(features) > 1 else 0)
-                    bmi = float(name_map.get('bmi', 0)) if 'bmi' in name_map else (features[5] if len(features) > 5 else 0)
-                    if prediction == 1:
-                        if glucose > 170:
-                            return 'High diabetes risk and very elevated glucose! Please consult a doctor immediately.'
-                        elif bmi > 32:
-                            return 'High risk and high BMI detected. Talk with your doctor about weight management.'
-                        else:
-                            return 'High risk detected. Please consult a doctor soon for further assessment.'
-                    else:
-                        if glucose < 100:
-                            return 'No diabetes risk and healthy glucose. Keep it up!'
-                        else:
-                            return 'No diabetes risk detected. Maintain a healthy lifestyle!'
-
-                # HEART
-                if disease_type == 'heart':
-                    age = float(name_map.get('age', 0)) if 'age' in name_map else (features[0] if len(features) > 0 else 0)
-                    chol = float(name_map.get('chol', 0)) if 'chol' in name_map else (features[4] if len(features) > 4 else 0)
-                    if prediction == 0:  # No Disease (fixed from prediction == 1)
-                        if age > 60:
-                            return 'No heart disease, but your age suggests regular cardiac checkups.'
-                        else:
-                            return 'No heart disease detected. Keep a healthy routine.'
-                    else:  # prediction == 1: Disease Present (fixed from else)
-                        if age > 60:
-                            return 'AT RISK: Cardiac danger in advanced age. Schedule a cardiology checkup!'
-                        elif chol > 240:
-                            return 'Warning: High cholesterol and cardiac risk detected. Seek medical attention promptly.'
-                        else:
-                            return 'Urgent: cardiac risk detected! Schedule a medical appointment now.'
-
-                # BREAST CANCER
-                if disease_type == 'breast_cancer':
-                    radius_mean = float(name_map.get('radius_mean', 0)) if 'radius_mean' in name_map else (features[0] if len(features) > 0 else 0)
-                    if prediction == 1:
-                        if radius_mean > 15:
-                            return 'Warning: Malignant, large suspicious mass detected. Urgent oncologist referral needed.'
-                        else:
-                            return 'Warning: suspicious malignant features detected. Please see your oncologist as soon as possible.'
-                    else:
-                        return 'Benign result. Routine screenings and vigilance are still recommended.'
-
-            except Exception:
-                pass
-
-            return 'Result interpretation is unavailable.'
-        
-        # Load model
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        models_dir = os.path.join(script_dir, '..', 'models')
-        model_path = os.path.join(models_dir, f'{disease_type}_model.txt')
-        model_path = os.path.normpath(model_path)
-        
-        if not os.path.exists(model_path):
-            return None
-        
-        try:
-            model = cpp_tree.DecisionTree()
-            loaded = model.load(model_path)
-            
-            if not loaded:
-                return None
-            
-            # Extract features
-            config = get_disease_config(disease_type)
-            if not config:
-                return None
-            
-            features = []
-            defaults = {}
-            from ocr_utils import get_default_values
-            defaults = get_default_values(disease_type)
-            
-            for field in config['fields']:
-                field_name = field['name']
-                value = test_data.get(field_name)
-                if value is None:
-                    value = defaults.get(field_name, field.get('default', 0))
-                features.append(float(value))
-            
-            # Make prediction
-            prediction = model.predict(features)
-            
-            # Calculate confidence (simplified - actual ML would provide probability)
-            confidence = 75.0  # Default confidence for ML
-            
-            return {
-                'prediction': prediction,
-                'confidence': confidence,
-                'method': 'ML',
-                'features_used': len(features)
-            }
-            
-        except Exception as e:
-            print(f"Error in ML prediction: {e}")
-            return None
-    
     def predict(self, test_data, symptoms, disease_type):
         """
-        Main prediction method.
-        Uses DSA first, falls back to ML if DSA confidence is low.
+        Main prediction method using pure DSA analysis.
+        No ML fallback - all predictions based on custom data structures.
         """
-        # Try DSA first
+        # Use DSA analysis only
         dsa_result = self.analyze_with_dsa(test_data, symptoms, disease_type)
         
-        # If DSA confidence is low (< 60), use ML fallback
-        if dsa_result['confidence'] < 60:
-            ml_result = self.analyze_with_ml(test_data, disease_type)
-            
-            if ml_result:
-                # Combine DSA and ML results
-                combined_confidence = (dsa_result['confidence'] * 0.4) + (ml_result['confidence'] * 0.6)
-                
-                # Use ML prediction if confidence is significantly higher
-                if ml_result['confidence'] > dsa_result['confidence'] + 15:
-                    # Merge DSA metadata into ML result to preserve severity/risk information
-                    merged = {
-                        **ml_result,
-                        'confidence': combined_confidence,
-                        'method': 'ML (DSA confidence too low)',
-                        'dsa_result': dsa_result
-                    }
-                    # Populate top-level severity/risk fields from DSA when absent
-                    if not merged.get('severity_label') and dsa_result.get('severity_label'):
-                        merged['severity_label'] = dsa_result.get('severity_label')
-                        merged['severity_reason'] = dsa_result.get('severity_reason')
-                    if merged.get('risk_score') is None and dsa_result.get('risk_score') is not None:
-                        merged['risk_score'] = dsa_result.get('risk_score')
-                    if not merged.get('remark'):
-                        merged['remark'] = dsa_result.get('severity_reason') or 'Based on the analysis of provided health metrics.'
-                    return merged
-        
-        # Determine which result we will return (could be DSA or ML combined)
-        final_result = dsa_result
-
-        # If DSA confidence is low (< 60), use ML fallback
-        if dsa_result['confidence'] < 60:
-            ml_result = self.analyze_with_ml(test_data, disease_type)
-
-            if ml_result:
-                # Combine DSA and ML results
-                combined_confidence = (dsa_result['confidence'] * 0.4) + (ml_result['confidence'] * 0.6)
-
-                # Use ML prediction if confidence is significantly higher
-                if ml_result['confidence'] > dsa_result['confidence'] + 15:
-                    # Merge DSA metadata into ML result before using it as final_result
-                    merged = {
-                        **ml_result,
-                        'confidence': combined_confidence,
-                        'method': 'ML (DSA confidence too low)',
-                        'dsa_result': dsa_result
-                    }
-                    if not merged.get('severity_label') and dsa_result.get('severity_label'):
-                        merged['severity_label'] = dsa_result.get('severity_label')
-                        merged['severity_reason'] = dsa_result.get('severity_reason')
-                    if merged.get('risk_score') is None and dsa_result.get('risk_score') is not None:
-                        merged['risk_score'] = dsa_result.get('risk_score')
-                    if not merged.get('remark'):
-                        merged['remark'] = dsa_result.get('severity_reason') or 'Based on the analysis of provided health metrics.'
-                    final_result = merged
-
         # Build an ordered features list (matching disease config) to enable human-friendly remarks
         try:
             config = get_disease_config(disease_type)
@@ -658,21 +474,13 @@ class PredictionEngine:
 
         # Attach a human-friendly remark based on disease-specific heuristics
         try:
-            prediction_value = final_result.get('prediction', 0)
+            prediction_value = dsa_result.get('prediction', 0)
             # Ensure DSA metadata is present so templates can display severity info
-            if 'dsa_result' not in final_result:
-                final_result['dsa_result'] = dsa_result
-
-            # If ML result didn't include severity/risk, populate from DSA
-            if not final_result.get('severity_label') and dsa_result.get('severity_label'):
-                final_result['severity_label'] = dsa_result.get('severity_label')
-                final_result['severity_reason'] = dsa_result.get('severity_reason')
-            if not final_result.get('risk_score') and dsa_result.get('risk_score') is not None:
-                final_result['risk_score'] = dsa_result.get('risk_score')
+            dsa_result['dsa_result'] = dsa_result
 
             # Try to generate a human-friendly remark. Prefer any existing remark,
             # otherwise fall back to DSA's severity_reason.
-            if final_result.get('remark'):
+            if dsa_result.get('remark'):
                 pass
             else:
                 # If the only available text is a technical severity_reason (parameter names/values),
@@ -681,15 +489,15 @@ class PredictionEngine:
                 if sr:
                     # detect technical pattern like operators or parameter names
                     if any(tok in sr for tok in ['>=', '<=', ' pct', 'pct', '=', 'parameter', 'radius', 'glucose', 'bmi', 'chol', 'bp']):
-                        final_result['remark'] = 'Clinical flags detected. See details for specifics.'
+                        dsa_result['remark'] = 'Clinical flags detected. See details for specifics.'
                     else:
-                        final_result['remark'] = sr
+                        dsa_result['remark'] = sr
                 else:
-                    final_result['remark'] = 'Based on the analysis of provided health metrics.'
+                    dsa_result['remark'] = 'Based on the analysis of provided health metrics.'
         except Exception:
-            final_result['remark'] = 'Based on the analysis of provided health metrics.'
+            dsa_result['remark'] = 'Based on the analysis of provided health metrics.'
 
-        return final_result
+        return dsa_result
     
     def predict_all_diseases(self, test_data, symptoms):
         """
@@ -709,9 +517,9 @@ class PredictionEngine:
                     **result
                 })
         
-        # Rank by risk using C++ PriorityQueue
+        # Rank by risk using C++ PriorityQueue (wrapper)
         ranked_results = []
-        heap = PriorityQueue(max_heap=True)
+        heap = MedicalPriorityQueue(max_heap=True)
         
         for result in results:
             risk_score = result.get('risk_score', result.get('confidence', 0))
@@ -728,28 +536,13 @@ class PredictionEngine:
         Analyze trends using Stack.
         Compares current data with historical data.
         """
-        # Create stack from historical data (last 5 reports) - using C++ Stack
-        history_stack = MedicalStack(max_size=5)
-        import json
-        for report in historical_data:
-            report_str = json.dumps(report)
-            history_stack.push(report_str)
-        
         trends = {}
         
-        if history_stack.is_empty():
+        if not historical_data:
             return trends
         
-        # Get most recent report from stack
-        try:
-            last_report_str = history_stack.peek()
-            last_report = json.loads(last_report_str)
-        except:
-            # Fallback: use last item from historical_data
-            if historical_data:
-                last_report = historical_data[-1]
-            else:
-                return trends
+        # Get most recent historical report (first in the list since it's ordered newest first)
+        last_report = historical_data[0]
         
         for param, current_value in current_data.items():
             if isinstance(current_value, (int, float)):
