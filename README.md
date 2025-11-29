@@ -67,8 +67,8 @@ Before you begin, ensure you have the following installed:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/vitacare-pro.git
-   cd vitacare-pro
+   git clone https://github.com/abdulrafay1402/Multi-Disease-Detect-Support-System.git
+   cd Multi-Disease-Detect-Support-System
    ```
 
 2. **Build the C++ module**
@@ -246,33 +246,42 @@ python train.py
 
 ## 👥 Team
 
-<table>
-<tr>
-<td align="center">
-<h3>Group Leader</h3>
-<b>Afshal Liaquat</b><br>
-<i>Project Lead, Data Science & Testing</i><br>
-<sub>Model training • Dataset preprocessing<br>System testing • Project coordination</sub>
-</td>
-</tr>
-</table>
+<div align="center">
+
+### 🎓 Project Team Members
 
 <table>
+<thead>
 <tr>
-<td align="center" width="50%">
-<h3>Team Member</h3>
-<b>Abdul Rafay</b><br>
-<i>C++ Core Engine & Full UI Development</i><br>
-<sub>Decision tree implementation<br>Core DSA structures<br>Python-C++ integration<br>Flask web application<br>Complete UI design</sub>
-</td>
-<td align="center" width="50%">
-<h3>Team Member</h3>
-<b>Bisma Shahid</b><br>
-<i>Database Development & DSA Implementation</i><br>
-<sub>MySQL schema design<br>Database optimization<br>Advanced DSA implementation<br>DAOs & testing</sub>
-</td>
+<th width="20%">Role</th>
+<th width="25%">Name</th>
+<th width="15%">Roll Number</th>
+<th width="40%">Responsibilities</th>
 </tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><b>👨‍💼 Group Leader</b></td>
+<td align="center"><b>Afshal Liaquat</b></td>
+<td align="center"><code>24K-2558</code></td>
+<td>Project Lead, Data Science & Testing<br>• Model training & dataset preprocessing<br>• System testing & validation<br>• Project coordination</td>
+</tr>
+<tr>
+<td align="center"><b>👨‍💻 Team Member</b></td>
+<td align="center"><b>Abdul Rafay</b></td>
+<td align="center"><code>24K-3007</code></td>
+<td>C++ Core Engine & Full UI Development<br>• Decision tree implementation<br>• Core DSA structures & Python-C++ integration<br>• Flask web application & complete UI design</td>
+</tr>
+<tr>
+<td align="center"><b>👩‍💻 Team Member</b></td>
+<td align="center"><b>Bisma Shahid</b></td>
+<td align="center"><code>24K-3012</code></td>
+<td>Database Development & DSA Implementation<br>• MySQL schema design & optimization<br>• Advanced DSA implementation<br>• DAOs & testing</td>
+</tr>
+</tbody>
 </table>
+
+</div>
 
 ## 🔮 Future Enhancements
 
@@ -283,9 +292,8 @@ python train.py
 
 ## 📚 Documentation
 
-- [📖 Full Technical Report](PROJECT_REPORT.md)
-- [📋 Project Index](PROJECT_INDEX.md)
-- [📄 Professional Report](VitaCare_Pro_Project_Report.docx)
+- [📖 Full Technical Report](PROJECT_REPORT.md) - Comprehensive project documentation
+- [📄 Professional Report](VitaCare_Pro_Project_Report.docx) - Formatted Word document
 
 ## 🤝 Contributing
 
@@ -321,6 +329,6 @@ For questions or support, please open an issue in the repository.
 
 ⭐ Star us on GitHub — it motivates us a lot!
 
-[Report Bug](https://github.com/yourusername/vitacare-pro/issues) • [Request Feature](https://github.com/abdulrafay1402/vitacare-pro/issues)
+[Report Bug](https://github.com/abdulrafay1402/Multi-Disease-Detect-Support-System/issues) • [Request Feature](https://github.com/abdulrafay1402/Multi-Disease-Detect-Support-System/issues)
 
 </div>

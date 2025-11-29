@@ -9,11 +9,9 @@
 
 | Role | Name | Roll Number |
 |------|------|-------------|
-| **Group Leader** | Afshal Liaquat | [Roll Number] |
-| **Team Member** | Abdul Rafay | [Roll Number] |
-| **Team Member** | Bisma Shahid | [Roll Number] |
-
-**Date:** November 29, 2025
+| **Group Leader** | Afshal Liaquat | [24K-2558] |
+| **Team Member** | Abdul Rafay | [24K-3007] |
+| **Team Member** | Bisma Shahid | [24K-3012] |
 
 ---
 
