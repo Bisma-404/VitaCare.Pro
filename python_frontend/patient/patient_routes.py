@@ -155,9 +155,17 @@ def view_report_detail(report_id):
 @patient_required
 def download_report_file(report_id):
     """Serve uploaded report file for viewing/downloading."""
+    patient_id = session.get('user_id')
     report = PatientReportDAO.get_report_by_id(report_id)
+    
     if not report:
         abort(404)
+    
+    # Security check: Ensure the report belongs to the logged-in patient
+    if report.get('patient_id') != patient_id:
+        flash('Unauthorized access to report', 'error')
+        abort(403)
+    
     uploaded = report.get('uploaded_file')
     if not uploaded:
         flash('No file attached to this report', 'error')
