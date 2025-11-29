@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard - VitaCare Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vitacare-pro-enhancements.css') }}">
+    <script src="{{ url_for('static', filename='js/toast-notifications.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/loading-overlay.js') }}" defer></script>
     <style>
-        html,body { transition: background 0.45s, color 0.3s; }
+        html,
+        body {
+            transition: background 0.45s, color 0.3s;
+        }
+
         body {
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--bg-main, #181B20);
@@ -15,6 +22,7 @@
             margin: 0;
             color: var(--text-main, #FFF);
         }
+
         :root {
             --bg-main: #181B20;
             --bg-card: #22262E;
@@ -27,6 +35,7 @@
             --text-muted: #B8E2E7;
             --shadow: 0 6px 36px 0 #08d9d622;
         }
+
         html.light {
             --bg-main: #e8f4f5;
             --bg-card: #f5fafa;
@@ -39,85 +48,145 @@
             --text-muted: #455664;
             --shadow: 0 10px 30px 0 #18c0ce1e;
         }
+
         .nav-bar {
-            width: 100vw; background: var(--nav-bg);
-            color: var(--accent); font-weight: 800;
-            letter-spacing: 0.5px; box-shadow: var(--shadow);
-            padding: 18px 0; text-align: center; font-size: 1.32em;
-            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+            width: 100vw;
+            background: var(--nav-bg);
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow);
+            padding: 18px 0;
+            text-align: center;
+            font-size: 1.32em;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
             position: relative;
             margin-bottom: 30px;
         }
+
         .theme-switcher {
-            position: absolute; top: 8px; right: 18px;
-            cursor: pointer; font-size: 1.75em; color: var(--accent);
-            background: none; border: none; outline: none; transition: color .25s;
+            position: absolute;
+            top: 8px;
+            right: 18px;
+            cursor: pointer;
+            font-size: 1.75em;
+            color: var(--accent);
+            background: none;
+            border: none;
+            outline: none;
+            transition: color .25s;
         }
+
         .nav-links {
-            position: absolute; top: 8px; left: 18px;
+            position: absolute;
+            top: 8px;
+            left: 18px;
             display: flex;
             gap: 15px;
             align-items: center;
         }
+
         .nav-links a {
             color: var(--accent);
             text-decoration: none;
             font-weight: 600;
             font-size: 0.9em;
         }
+
         .nav-links a:hover {
             text-decoration: underline;
         }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
+
         .welcome-section {
-            background: var(--bg-card);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 30px;
+            background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
+            border-radius: 20px;
+            padding: 48px 40px;
+            margin-bottom: 32px;
             box-shadow: var(--shadow);
+            color: var(--bg-main);
+            position: relative;
+            overflow: hidden;
         }
+
+        .welcome-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
         .welcome-section h1 {
-            color: var(--accent);
-            font-size: 2em;
-            margin-bottom: 10px;
+            color: var(--bg-main);
+            font-size: 2.25rem;
+            font-weight: var(--fw-extrabold);
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
         }
+
         .welcome-section p {
-            color: var(--text-muted);
+            color: var(--bg-main);
+            opacity: 0.9;
+            font-size: var(--fs-lg);
+            position: relative;
+            z-index: 1;
         }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
+
         .stat-card {
             background: var(--bg-card);
             border-radius: 16px;
             padding: 25px;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-md);
             border-left: 4px solid var(--accent);
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
         }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
         .stat-card h3 {
             color: var(--text-muted);
             font-size: 0.95em;
             margin-bottom: 10px;
             font-weight: 600;
         }
+
         .stat-card .stat-value {
             color: var(--accent);
             font-size: 2.5em;
             font-weight: 800;
         }
+
         .actions-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }
+
         .action-btn {
             background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%);
             color: var(--bg-main);
@@ -130,28 +199,34 @@
             transition: opacity 0.19s, transform 0.2s;
             display: block;
         }
+
         .action-btn:hover {
             opacity: 0.89;
             transform: translateY(-2px);
         }
+
         .reports-section {
             background: var(--bg-card);
             border-radius: 16px;
             padding: 30px;
             box-shadow: var(--shadow);
         }
+
         .reports-section h2 {
             color: var(--accent);
             margin-bottom: 20px;
             font-size: 1.5em;
         }
+
         .table-container {
             overflow-x: auto;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
+
         th {
             background: var(--nav-bg);
             color: var(--accent);
@@ -159,14 +234,17 @@
             text-align: left;
             font-weight: 700;
         }
+
         td {
             padding: 15px;
             border-bottom: 1px solid var(--disabled);
             color: var(--text-main);
         }
+
         tr:hover {
             background: var(--nav-bg);
         }
+
         .btn-action {
             background: var(--accent);
             color: var(--bg-main);
@@ -178,35 +256,39 @@
             transition: opacity 0.2s;
             margin-right: 5px;
         }
+
         .btn-action:hover {
             opacity: 0.8;
         }
+
         .empty-state {
             text-align: center;
             padding: 40px;
             color: var(--text-muted);
         }
+
         .empty-state p {
             font-size: 1.1em;
         }
     </style>
     <script>
-    function setTheme(mode) {
-      document.documentElement.className = mode;
-      localStorage.setItem('theme', mode);
-      document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
-    }
-    function toggleTheme() {
-      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
-      setTheme(current === 'dark' ? 'light' : 'dark');
-    }
-    document.addEventListener('DOMContentLoaded',function(){
-      let theme = localStorage.getItem('theme');
-      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
-      setTheme(theme);
-    });
+        function setTheme(mode) {
+            document.documentElement.className = mode;
+            localStorage.setItem('theme', mode);
+            document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            let theme = localStorage.getItem('theme');
+            if (!theme) { theme = 'dark'; localStorage.setItem('theme', 'dark'); }
+            setTheme(theme);
+        });
     </script>
 </head>
+
 <body>
     <div class="nav-bar">
         <div class="nav-links">
@@ -214,15 +296,16 @@
             <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
         🏥 VitaCare Pro - Staff Portal
-        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+        <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()"
+            title="Toggle dark/light mode">🌙</button>
     </div>
-    
+
     <div class="container">
         <div class="welcome-section">
             <h1>👨‍⚕️ Staff Dashboard</h1>
             <p>Manage patient reports and upload new reports.</p>
         </div>
-        
+
         <div class="stats-grid">
             <div class="stat-card">
                 <h3>👥 Total Patients</h3>
@@ -234,7 +317,7 @@
             </div>
             <!-- Total Predictions removed from dashboard per request -->
         </div>
-        
+
         <div class="actions-grid">
             <a href="{{ url_for('staff.upload_report') }}" class="action-btn">
                 📤 Upload Report
@@ -249,7 +332,7 @@
                 ⚙️ Disease Thresholds
             </a>
         </div>
-        
+
         <div class="reports-section">
             <h2>Recent Reports</h2>
             {% if recent_reports %}
@@ -283,4 +366,5 @@
         </div>
     </div>
 </body>
+
 </html>

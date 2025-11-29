@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Report Details - VitaCare Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vitacare-pro-enhancements.css') }}">
+    <script src="{{ url_for('static', filename='js/toast-notifications.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/loading-overlay.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/risk-gauge.js') }}" defer></script>
     <style>
-        html,body { transition: background 0.45s, color 0.3s; }
+        html,
+        body {
+            transition: background 0.45s, color 0.3s;
+        }
+
         body {
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--bg-main, #181B20);
@@ -15,6 +23,7 @@
             margin: 0;
             color: var(--text-main, #FFF);
         }
+
         :root {
             --bg-main: #181B20;
             --bg-card: #22262E;
@@ -24,6 +33,7 @@
             --text-muted: #B8E2E7;
             --shadow: 0 6px 36px 0 #08d9d622;
         }
+
         html.light {
             --bg-main: #fcfeff;
             --bg-card: #FFFFFF;
@@ -33,57 +43,87 @@
             --text-muted: #455664;
             --shadow: 0 10px 30px 0 #18c0ce1e;
         }
+
         .nav-bar {
-            width: 100vw; background: var(--nav-bg);
-            color: var(--accent); font-weight: 800;
-            letter-spacing: 0.5px; box-shadow: var(--shadow);
-            padding: 18px 0; text-align: center; font-size: 1.32em;
-            border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+            width: 100vw;
+            background: var(--nav-bg);
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow);
+            padding: 18px 0;
+            text-align: center;
+            font-size: 1.32em;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
             position: relative;
             margin-bottom: 30px;
         }
+
         .theme-switcher {
-            position: absolute; top: 8px; right: 18px;
-            cursor: pointer; font-size: 1.75em; color: var(--accent);
-            background: none; border: none; outline: none; transition: color .25s;
+            position: absolute;
+            top: 8px;
+            right: 18px;
+            cursor: pointer;
+            font-size: 1.75em;
+            color: var(--accent);
+            background: none;
+            border: none;
+            outline: none;
+            transition: color .25s;
         }
+
         .nav-links {
-            position: absolute; top: 8px; left: 18px;
+            position: absolute;
+            top: 8px;
+            left: 18px;
             display: flex;
             gap: 15px;
             align-items: center;
         }
+
         .nav-links a {
             color: var(--accent);
             text-decoration: none;
             font-weight: 600;
             font-size: 0.9em;
         }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
+
         .section {
             background: var(--bg-card);
             border-radius: 16px;
             padding: 30px;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-md);
             margin-bottom: 20px;
+            transition: all var(--transition-base);
         }
+
+        .section:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
         .section h2 {
             color: var(--accent);
             margin-bottom: 20px;
         }
+
         .section h3 {
             color: var(--accent);
             margin-top: 20px;
             margin-bottom: 10px;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
+
         th {
             background: var(--nav-bg);
             color: var(--accent);
@@ -91,36 +131,47 @@
             text-align: left;
             font-weight: 700;
         }
+
         td {
             padding: 15px;
             border-bottom: 1px solid var(--nav-bg);
             color: var(--text-main);
         }
+
         .prediction-card {
             background: var(--nav-bg);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             border-left: 4px solid var(--accent);
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .prediction-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
     </style>
     <script>
-    function setTheme(mode) {
-      document.documentElement.className = mode;
-      localStorage.setItem('theme', mode);
-      document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
-    }
-    function toggleTheme() {
-      const current = document.documentElement.classList.contains('light') ? 'light':'dark';
-      setTheme(current === 'dark' ? 'light' : 'dark');
-    }
-    document.addEventListener('DOMContentLoaded',function(){
-      let theme = localStorage.getItem('theme');
-      if(!theme){ theme = 'dark'; localStorage.setItem('theme','dark'); }
-      setTheme(theme);
-    });
+        function setTheme(mode) {
+            document.documentElement.className = mode;
+            localStorage.setItem('theme', mode);
+            document.getElementById('theme-switcher').textContent = mode === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            let theme = localStorage.getItem('theme');
+            if (!theme) { theme = 'dark'; localStorage.setItem('theme', 'dark'); }
+            setTheme(theme);
+        });
     </script>
 </head>
+
 <body>
     <div class="nav-bar">
         <div class="nav-links">
@@ -129,26 +180,33 @@
         📄 Report Details
         <button id="theme-switcher" class="theme-switcher" onclick="toggleTheme()">🌙</button>
     </div>
-    
+
     <div class="container">
         <div class="section">
             <h2>📋 Report Information</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                <div style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div
+                    style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Report ID</p>
                     <p style="color: var(--accent); font-size: 1.3em; font-weight: 700; margin: 0;">#{{ report.id }}</p>
                 </div>
-                <div style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div
+                    style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Report Type</p>
-                    <p style="color: var(--accent); font-size: 1.3em; font-weight: 700; margin: 0;">{{ report.report_type }}</p>
+                    <p style="color: var(--accent); font-size: 1.3em; font-weight: 700; margin: 0;">{{
+                        report.report_type }}</p>
                 </div>
-                <div style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div
+                    style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Report Date</p>
-                    <p style="color: var(--accent); font-size: 1.3em; font-weight: 700; margin: 0;">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else 'N/A' }}</p>
+                    <p style="color: var(--accent); font-size: 1.3em; font-weight: 700; margin: 0;">{{
+                        report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else 'N/A' }}</p>
                 </div>
             </div>
             {% if report.notes %}
-            <div style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+            <div
+                style="background: var(--nav-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                 <p style="color: var(--accent); font-weight: 700; margin: 0 0 10px 0;">📝 Staff Notes:</p>
                 <p style="color: var(--text-muted); margin: 0; line-height: 1.6;">{{ report.notes }}</p>
             </div>
@@ -160,46 +218,62 @@
             <h2>📎 Attached Medical Document</h2>
             <div style="background: var(--nav-bg); padding: 20px; border-radius: 12px;">
                 {% set ext = (report.uploaded_file.rsplit('.',1)[1]|default('')).lower() %}
-                <p style="color: var(--text-muted); margin-bottom: 15px;"><strong>File:</strong> {{ report.uploaded_file.rsplit('/',1)[-1] }}</p>
+                <p style="color: var(--text-muted); margin-bottom: 15px;"><strong>File:</strong> {{
+                    report.uploaded_file.rsplit('/',1)[-1] }}</p>
                 {% if ext in ['jpg','jpeg','png','bmp','tiff'] %}
-                    <div style="text-align: center; margin: 15px 0;">
-                        <img src="{{ url_for('patient.download_report_file', report_id=report.id) }}" alt="Medical Report" style="max-width: 100%; max-height: 600px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.4);">
-                    </div>
-                    <div style="text-align: center; margin-top: 15px;">
-                        <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank" style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                            📥 Open / Download
-                        </a>
-                    </div>
+                <div style="text-align: center; margin: 15px 0;">
+                    <img src="{{ url_for('patient.download_report_file', report_id=report.id) }}" alt="Medical Report"
+                        style="max-width: 100%; max-height: 600px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.4);">
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank"
+                        style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        📥 Open / Download
+                    </a>
+                </div>
                 {% elif ext == 'pdf' %}
-                    <iframe src="{{ url_for('patient.download_report_file', report_id=report.id) }}" style="width:100%;height:600px;border:0;border-radius:8px; background: white;" title="PDF Preview"></iframe>
-                    <div style="text-align: center; margin-top: 15px;">
-                        <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank" style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                            📥 Open / Download PDF
-                        </a>
-                    </div>
+                <iframe src="{{ url_for('patient.download_report_file', report_id=report.id) }}"
+                    style="width:100%;height:600px;border:0;border-radius:8px; background: white;"
+                    title="PDF Preview"></iframe>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank"
+                        style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        📥 Open / Download PDF
+                    </a>
+                </div>
                 {% else %}
-                    <div style="text-align: center; padding: 30px;">
-                        <p style="font-size: 3em; margin-bottom: 10px;">📄</p>
-                        <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank" style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                            📥 Download File
-                        </a>
-                    </div>
+                <div style="text-align: center; padding: 30px;">
+                    <p style="font-size: 3em; margin-bottom: 10px;">📄</p>
+                    <a href="{{ url_for('patient.download_report_file', report_id=report.id) }}" target="_blank"
+                        style="background: linear-gradient(135deg, var(--accent) 0%, #2ce7dd 100%); color: var(--bg-main); padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        📥 Download File
+                    </a>
+                </div>
                 {% endif %}
             </div>
         </div>
         {% endif %}
-        
+
         {% if tests %}
         <div class="section">
             <h2>🔬 Test Results</h2>
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Laboratory test values from your medical report</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Laboratory test values from your medical report
+            </p>
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr style="background: var(--nav-bg);">
-                        <th style="padding: 15px; text-align: left; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Test Name</th>
-                        <th style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Value</th>
-                        <th style="padding: 15px; text-align: left; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Reference Range</th>
-                        <th style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">Unit</th>
+                        <th
+                            style="padding: 15px; text-align: left; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">
+                            Test Name</th>
+                        <th
+                            style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">
+                            Value</th>
+                        <th
+                            style="padding: 15px; text-align: left; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">
+                            Reference Range</th>
+                        <th
+                            style="padding: 15px; text-align: center; color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent);">
+                            Unit</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -207,84 +281,105 @@
                     <tr style="border-bottom: 1px solid var(--nav-bg);">
                         <td style="padding: 15px; color: var(--text-main); font-weight: 600;">{{ test.test_name }}</td>
                         <td style="padding: 15px; text-align: center;">
-                            <span style="background: rgba(8, 217, 214, 0.2); color: var(--accent); padding: 6px 14px; border-radius: 8px; font-weight: 700;">
+                            <span
+                                style="background: rgba(8, 217, 214, 0.2); color: var(--accent); padding: 6px 14px; border-radius: 8px; font-weight: 700;">
                                 {{ "%.2f"|format(test.test_value) if test.test_value is not none else 'N/A' }}
                             </span>
                         </td>
-                        <td style="padding: 15px; color: var(--text-muted);">{{ test.reference_range if test.reference_range else 'Not specified' }}</td>
-                        <td style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 0.9em;">{{ test.unit if test.unit else '-' }}</td>
+                        <td style="padding: 15px; color: var(--text-muted);">{{ test.reference_range if
+                            test.reference_range else 'Not specified' }}</td>
+                        <td style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 0.9em;">{{
+                            test.unit if test.unit else '-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% endif %}
-        
+
         {% if predictions %}
         <div class="section">
             <h2>🩺 Disease Predictions & Risk Analysis</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px;">AI-powered predictions based on your test results</p>
-            
+            <p style="color: var(--text-muted); margin-bottom: 20px;">AI-powered predictions based on your test results
+            </p>
+
             {% for prediction in predictions %}
             {% set risk_score = (prediction.risk_score or prediction.confidence_score or 0)|float %}
-            <div style="background: var(--nav-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 6px solid {% if risk_score >= 70 %}#ff4444{% elif risk_score >= 40 %}#ffaa00{% else %}#44ff44{% endif %}; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="color: var(--accent); margin: 0; font-size: 1.3em;">{{ prediction.disease_name if prediction.disease_name else 'Disease Prediction' }}</h3>
-                    <span style="padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9em; {% if risk_score >= 70 %}background: rgba(255,68,68,0.2); color: #ff4444;{% elif risk_score >= 40 %}background: rgba(255,170,0,0.2); color: #ffaa00;{% else %}background: rgba(68,255,68,0.2); color: #44ff44;{% endif %}">
+            <div
+                style="background: var(--nav-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 6px solid {% if risk_score >= 70 %}#ff4444{% elif risk_score >= 40 %}#ffaa00{% else %}#44ff44{% endif %}; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="color: var(--accent); margin: 0; font-size: 1.3em;">{{ prediction.disease_name if
+                        prediction.disease_name else 'Disease Prediction' }}</h3>
+                    <span
+                        style="padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9em; {% if risk_score >= 70 %}background: rgba(255,68,68,0.2); color: #ff4444;{% elif risk_score >= 40 %}background: rgba(255,170,0,0.2); color: #ffaa00;{% else %}background: rgba(68,255,68,0.2); color: #44ff44;{% endif %}">
                         {{ "%.1f"|format(risk_score) }}% Risk
                     </span>
                 </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
                     <div style="background: rgba(8, 217, 214, 0.1); padding: 12px; border-radius: 8px;">
                         <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Risk Level</p>
-                        <p style="margin: 0; font-weight: 700; {% if risk_score >= 70 %}color: #ff4444;{% elif risk_score >= 40 %}color: #ffaa00;{% else %}color: #44ff44;{% endif %}">
-                            {% if risk_score >= 70 %}🔴 High Risk{% elif risk_score >= 40 %}🟡 Medium Risk{% else %}🟢 Low Risk{% endif %}
+                        <p
+                            style="margin: 0; font-weight: 700; {% if risk_score >= 70 %}color: #ff4444;{% elif risk_score >= 40 %}color: #ffaa00;{% else %}color: #44ff44;{% endif %}">
+                            {% if risk_score >= 70 %}🔴 High Risk{% elif risk_score >= 40 %}🟡 Medium Risk{% else %}🟢
+                            Low Risk{% endif %}
                         </p>
                     </div>
                     <div style="background: rgba(8, 217, 214, 0.1); padding: 12px; border-radius: 8px;">
                         <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Prediction Result</p>
-                        <p style="margin: 0; font-weight: 700; color: var(--accent);">{{ 'Positive' if prediction.prediction_result == 1 else 'Negative' }}</p>
+                        <p style="margin: 0; font-weight: 700; color: var(--accent);">{{ 'Positive' if
+                            prediction.prediction_result == 1 else 'Negative' }}</p>
                     </div>
                     <div style="background: rgba(8, 217, 214, 0.1); padding: 12px; border-radius: 8px;">
                         <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Analysis Method</p>
-                        <p style="margin: 0; font-weight: 700; color: var(--accent);">{{ prediction.method if prediction.method else 'C++ Decision Tree (DSA)' }}</p>
+                        <p style="margin: 0; font-weight: 700; color: var(--accent);">{{ prediction.method if
+                            prediction.method else 'C++ Decision Tree (DSA)' }}</p>
                     </div>
                 </div>
-                
+
                 {% if prediction.threshold_violations %}
-                <div style="background: rgba(255, 68, 68, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ff4444;">
-                    <p style="color: #ff4444; font-weight: 700; margin: 0 0 10px 0;">⚠️ Abnormal Test Values ({{ prediction.threshold_violations|length }})</p>
+                <div
+                    style="background: rgba(255, 68, 68, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ff4444;">
+                    <p style="color: #ff4444; font-weight: 700; margin: 0 0 10px 0;">⚠️ Abnormal Test Values ({{
+                        prediction.threshold_violations|length }})</p>
                     <div style="display: grid; gap: 8px;">
-                    {% for violation in prediction.threshold_violations[:6] %}
+                        {% for violation in prediction.threshold_violations[:6] %}
                         <div style="background: var(--bg-main); padding: 10px; border-radius: 6px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                                 <span style="color: var(--accent); font-weight: 700;">{{ violation.parameter }}</span>
                                 <span style="color: #ff4444; font-weight: 700;">{{ violation.value }}</span>
                             </div>
-                            <p style="color: var(--text-muted); font-size: 0.85em; margin: 5px 0 0 0;">Normal: {{ violation.normal_range }}</p>
+                            <p style="color: var(--text-muted); font-size: 0.85em; margin: 5px 0 0 0;">Normal: {{
+                                violation.normal_range }}</p>
                         </div>
-                    {% endfor %}
-                    {% if prediction.threshold_violations|length > 6 %}
-                        <div style="background: var(--bg-main); padding: 10px; border-radius: 6px; text-align: center; color: var(--text-muted); font-style: italic;">
+                        {% endfor %}
+                        {% if prediction.threshold_violations|length > 6 %}
+                        <div
+                            style="background: var(--bg-main); padding: 10px; border-radius: 6px; text-align: center; color: var(--text-muted); font-style: italic;">
                             + {{ prediction.threshold_violations|length - 6 }} more abnormal parameter(s)
                         </div>
-                    {% endif %}
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
-                
+
                 {% if prediction.severity_label or prediction.severity_reason %}
-                <div style="margin-top: 15px; padding: 15px; background: rgba(8, 217, 214, 0.1); border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div
+                    style="margin-top: 15px; padding: 15px; background: rgba(8, 217, 214, 0.1); border-radius: 8px; border-left: 4px solid var(--accent);">
                     {% if prediction.severity_label %}
-                    <p style="margin: 0 0 10px 0;"><strong style="color: var(--accent);">Severity Level:</strong> 
-                        <span style="background: rgba(255, 68, 68, 0.2); color: #ff4444; padding: 5px 12px; border-radius: 12px; font-weight: 700;">
+                    <p style="margin: 0 0 10px 0;"><strong style="color: var(--accent);">Severity Level:</strong>
+                        <span
+                            style="background: rgba(255, 68, 68, 0.2); color: #ff4444; padding: 5px 12px; border-radius: 12px; font-weight: 700;">
                             {{ prediction.severity_label }}
                         </span>
                     </p>
                     {% endif %}
                     {% if prediction.severity_reason %}
-                    <p style="color: var(--text-muted); margin: 0; line-height: 1.6;"><strong>Clinical Analysis:</strong> {{ prediction.severity_reason }}</p>
+                    <p style="color: var(--text-muted); margin: 0; line-height: 1.6;"><strong>Clinical
+                            Analysis:</strong> {{ prediction.severity_reason }}</p>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -294,5 +389,5 @@
         {% endif %}
     </div>
 </body>
-</html>
 
+</html>
