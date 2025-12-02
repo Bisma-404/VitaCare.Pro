@@ -177,6 +177,12 @@ CREATE TABLE predictions (
     method ENUM('DSA', 'ML', 'HYBRID') DEFAULT 'DSA',
     dsa_result_id INT,
     ml_result_id INT,
+    show_in_patient_panel BOOLEAN DEFAULT FALSE COMMENT 'Flag to show prediction in patient dashboard',
+    risk_score DECIMAL(5,2) COMMENT 'Calculated risk score',
+    severity_label VARCHAR(50) COMMENT 'Risk severity: Low, Medium, High',
+    severity_reason TEXT COMMENT 'Explanation of severity classification',
+    threshold_violations JSON COMMENT 'Parameters exceeding normal thresholds',
+    symptom_matches INT DEFAULT 0 COMMENT 'Number of symptoms matched',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (report_id) REFERENCES patient_reports(id) ON DELETE CASCADE,
     FOREIGN KEY (disease_id) REFERENCES disease_models(id) ON DELETE CASCADE,
@@ -184,7 +190,8 @@ CREATE TABLE predictions (
     INDEX idx_disease_id (disease_id),
     INDEX idx_prediction_result (prediction_result),
     INDEX idx_confidence_score (confidence_score),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_show_in_patient_panel (show_in_patient_panel)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===================================================================
@@ -258,7 +265,12 @@ CREATE TABLE login_history (
 -- SAMPLE DATA INSERTIONS
 -- ===================================================================
 
--- Insert default admin user (password: admin123 - SHA256 hashed)
+-- Insert default users (password: admin123)
+-- Note: Passwords use PBKDF2 double-hash scheme (salt$digest format)
+-- The system will migrate legacy SHA256 passwords automatically on first login
+-- For testing, you can use plain SHA256: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
+-- Or create users via the application which will use the secure PBKDF2 scheme
+
 INSERT INTO users (username, password, role, name, email, phone, status) VALUES
 ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'ADMIN', 'System Administrator', 'admin@hospital.com', '03001234567', 'ACTIVE'),
 ('doctor1', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'DOCTOR', 'Dr. John Smith', 'doctor1@hospital.com', '03001234568', 'ACTIVE'),
@@ -267,51 +279,52 @@ INSERT INTO users (username, password, role, name, email, phone, status) VALUES
 ('patient2', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'PATIENT', 'Patient Two', 'patient2@email.com', '03001234571', 'ACTIVE');
 
 -- Insert disease models
-INSERT INTO disease_models (disease_name, disease_code, description, is_active) VALUES
-('Diabetes', 'diabetes', 'Diabetes prediction model based on glucose, BMI, and other factors', TRUE),
-('Heart Disease', 'heart', 'Heart disease prediction model based on cardiac health indicators', TRUE),
-('Breast Cancer', 'breast_cancer', 'Breast cancer malignancy detection based on cell characteristics', TRUE),
-('Hypertension', 'hypertension', 'Hypertension risk assessment model', TRUE),
-('Obesity', 'obesity', 'Obesity risk assessment based on BMI and related factors', TRUE);
+-- These correspond to the trained ML models in python_frontend/models/
+INSERT INTO disease_models (disease_name, disease_code, description, model_file_path, is_active) VALUES
+('Diabetes', 'diabetes', 'Diabetes prediction model based on glucose, BMI, insulin, age, and other factors (8 features)', 'models/diabetes_model.txt', TRUE),
+('Heart Disease', 'heart', 'Heart disease prediction model based on cardiac health indicators (13 features)', 'models/heart_model.txt', TRUE),
+('Breast Cancer', 'breast_cancer', 'Breast cancer malignancy detection based on cell characteristics (10 features)', 'models/breast_cancer_model.txt', TRUE);
 
--- Insert disease thresholds (minimum 5 diseases as required)
--- Diabetes thresholds
+-- Insert disease thresholds for the 3 active disease models
+-- Diabetes thresholds (8 features as per Pima Indians Diabetes Database)
 INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
+(1, 'pregnancies', 0, 17, 'count'),
 (1, 'glucose', 70, 140, 'mg/dL'),
-(1, 'bmi', 18.5, 24.9, 'kg/m²'),
-(1, 'blood_pressure', 90, 140, 'mm Hg'),
-(1, 'insulin', 0, 25, 'µU/mL'),
-(1, 'age', 0, 120, 'years');
+(1, 'blood_pressure', 60, 90, 'mm Hg'),
+(1, 'skin_thickness', 10, 50, 'mm'),
+(1, 'insulin', 0, 150, 'µU/mL'),
+(1, 'bmi', 18.5, 30.0, 'kg/m²'),
+(1, 'diabetes_pedigree', 0.0, 1.5, 'function'),
+(1, 'age', 21, 81, 'years');
 
--- Heart Disease thresholds
+-- Heart Disease thresholds (13 features as per UCI Heart Disease Dataset)
 INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
-(2, 'cholesterol', 125, 200, 'mg/dL'),
-(2, 'blood_pressure', 90, 140, 'mm Hg'),
-(2, 'age', 0, 120, 'years'),
-(2, 'heart_rate', 60, 100, 'bpm'),
-(2, 'oldpeak', 0, 2, 'mm');
+(2, 'age', 29, 77, 'years'),
+(2, 'sex', 0, 1, 'binary'),
+(2, 'chest_pain_type', 0, 3, 'category'),
+(2, 'resting_bp', 90, 140, 'mm Hg'),
+(2, 'cholesterol', 125, 240, 'mg/dL'),
+(2, 'fasting_bs', 0, 1, 'binary'),
+(2, 'resting_ecg', 0, 2, 'category'),
+(2, 'max_heart_rate', 71, 202, 'bpm'),
+(2, 'exercise_angina', 0, 1, 'binary'),
+(2, 'oldpeak', 0.0, 6.2, 'mm'),
+(2, 'st_slope', 0, 2, 'category'),
+(2, 'ca', 0, 4, 'count'),
+(2, 'thal', 0, 3, 'category');
 
--- Breast Cancer thresholds
+-- Breast Cancer thresholds (10 features as per UCI Wisconsin Breast Cancer Dataset)
 INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
-(3, 'radius_mean', 5, 25, 'mm'),
-(3, 'texture_mean', 5, 40, 'unitless'),
-(3, 'perimeter_mean', 40, 200, 'mm'),
-(3, 'area_mean', 100, 2500, 'mm²'),
-(3, 'compactness_mean', 0.01, 0.4, 'unitless');
-
--- Hypertension thresholds
-INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
-(4, 'systolic_bp', 90, 140, 'mm Hg'),
-(4, 'diastolic_bp', 60, 90, 'mm Hg'),
-(4, 'age', 0, 120, 'years'),
-(4, 'bmi', 18.5, 24.9, 'kg/m²');
-
--- Obesity thresholds
-INSERT INTO disease_thresholds (disease_id, parameter_name, min_value, max_value, unit) VALUES
-(5, 'bmi', 18.5, 24.9, 'kg/m²'),
-(5, 'weight', 50, 100, 'kg'),
-(5, 'body_fat', 10, 25, '%'),
-(5, 'waist_circumference', 80, 94, 'cm');
+(3, 'radius_mean', 6.0, 30.0, 'mm'),
+(3, 'texture_mean', 9.0, 40.0, 'unitless'),
+(3, 'perimeter_mean', 40.0, 200.0, 'mm'),
+(3, 'area_mean', 100.0, 2500.0, 'mm²'),
+(3, 'smoothness_mean', 0.05, 0.16, 'unitless'),
+(3, 'compactness_mean', 0.01, 0.35, 'unitless'),
+(3, 'concavity_mean', 0.0, 0.45, 'unitless'),
+(3, 'concave_points_mean', 0.0, 0.20, 'unitless'),
+(3, 'symmetry_mean', 0.10, 0.30, 'unitless'),
+(3, 'fractal_dimension_mean', 0.05, 0.10, 'unitless');
 
 -- Insert symptoms
 INSERT INTO symptoms (symptom_name, description, category) VALUES
@@ -355,14 +368,25 @@ INSERT INTO patient_profiles (patient_id, date_of_birth, gender, blood_group, ad
 -- ===================================================================
 -- Total Tables: 14
 -- Foreign Keys: 17
--- Indexes: 45+
--- Sample Data: 5 diseases, 10 symptoms, 5 users, mappings
+-- Indexes: 46+
+-- Sample Data: 3 active disease models, 10 symptoms, 5 users, mappings
 -- ===================================================================
 -- Notes:
--- 1. All passwords are SHA256 hashed (default: admin123)
+-- 1. Passwords use PBKDF2 double-hash scheme (salt$digest format)
+--    - System automatically migrates legacy SHA256 passwords on login
+--    - Default test password: admin123
 -- 2. Foreign keys ensure referential integrity
--- 3. Indexes optimize query performance
--- 4. JSON fields used for flexible data storage
--- 5. Enum types ensure data consistency
+-- 3. Comprehensive indexes optimize query performance
+-- 4. JSON fields used for flexible data storage (threshold_violations)
+-- 5. Enum types ensure data consistency across roles and statuses
+-- 6. Disease models correspond to trained ML models in python_frontend/models/
+--    - diabetes_model.txt (8 features, 768 samples, ~87% accuracy)
+--    - heart_model.txt (13 features, 303 samples, ~85% accuracy)
+--    - breast_cancer_model.txt (10 features, 569 samples, ~89% accuracy)
+-- 7. Predictions table includes comprehensive analysis fields:
+--    - show_in_patient_panel: Flag for patient dashboard visibility
+--    - risk_score, severity_label, severity_reason: Risk assessment
+--    - threshold_violations (JSON): Parameters exceeding normal ranges
+--    - symptom_matches: Count of matched symptoms
 -- ===================================================================
 

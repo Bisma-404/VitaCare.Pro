@@ -3,7 +3,7 @@ Staff routes for hospital management system.
 Includes dashboard, report management, predictions, and CRUD operations.
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file, send_from_directory
 from functools import wraps
 import sys
 import os
@@ -279,9 +279,32 @@ def download_report_file(report_id):
         flash('File not found', 'error')
         return redirect(url_for('staff.view_report_detail', report_id=report_id))
     
+    uploaded = report['uploaded_file']
+    # Check if download parameter is set
+    download = request.args.get('download', 'false').lower() == 'true'
+    
     try:
-        return send_file(report['uploaded_file'], as_attachment=False)
+        # uploaded_file is stored as absolute path in database
+        # Check if file exists at the stored path
+        if os.path.isfile(uploaded):
+            directory = os.path.dirname(uploaded)
+            filename = os.path.basename(uploaded)
+            return send_from_directory(directory, filename, as_attachment=download)
+        else:
+            # Fallback: try relative path from uploads folder
+            upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads'))
+            filename = os.path.basename(uploaded)
+            filepath = os.path.join(upload_dir, filename)
+            
+            if os.path.isfile(filepath):
+                return send_from_directory(upload_dir, filename, as_attachment=download)
+            else:
+                print(f"File not found: {uploaded}")
+                print(f"Also tried: {filepath}")
+                flash('File not found on server', 'error')
+                return redirect(url_for('staff.view_report_detail', report_id=report_id))
     except Exception as e:
+        print(f'Error downloading file: {e}')
         flash(f'Error downloading file: {e}', 'error')
         return redirect(url_for('staff.view_report_detail', report_id=report_id))
 
