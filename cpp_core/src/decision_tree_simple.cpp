@@ -1,6 +1,6 @@
 #include "../Include/decision_tree_simple.h"
-#include <map>
-#include <set>
+#include "../Include/custom_map.h"
+#include "../Include/custom_set.h"
 #include <sstream>
 using namespace std;
 
@@ -21,23 +21,25 @@ void SimpleDecisionTree::deleteNodes(NodeS* node) {
 }
 
 double SimpleDecisionTree::calcEntropy(const vector<int>& labels) {
-    map<int, int> counts;
+    CustomMap<int, int> counts;
     for(auto label : labels) counts[label]++;
     double entropy = 0.0;
     int total = labels.size();
-    for(auto& x : counts) {
-        double p = double(x.second) / total;
+    for(auto it = counts.begin(); it != counts.end(); ++it) {
+        auto x = *it;
+        double p = double(x.value) / total;
         if (p > 0) entropy -= p * log2(p);
     }
     return entropy;
 }
 double SimpleDecisionTree::calcGini(const vector<int>& labels) {
-    map<int, int> counts;
+    CustomMap<int, int> counts;
     for(auto label : labels) counts[label]++;
     double gini = 1.0;
     int total = labels.size();
-    for(auto& x : counts) {
-        double p = double(x.second) / total;
+    for(auto it = counts.begin(); it != counts.end(); ++it) {
+        auto x = *it;
+        double p = double(x.value) / total;
         gini -= p * p;
     }
     return gini;
@@ -61,11 +63,12 @@ bool SimpleDecisionTree::allSameLabel(const vector<DataPointS>& data) {
     return true;
 }
 int SimpleDecisionTree::majorityLabel(const vector<DataPointS>& data) {
-    map<int, int> c;
+    CustomMap<int, int> c;
     for(auto& d : data) c[d.label]++;
     int maj = -1, mc = 0;
-    for(auto& x : c) {
-        if(x.second > mc) { mc = x.second; maj = x.first; }
+    for(auto it = c.begin(); it != c.end(); ++it) {
+        auto x = *it;
+        if(x.value > mc) { mc = x.value; maj = x.key; }
     }
     return maj;
 }
@@ -88,9 +91,9 @@ NodeS* SimpleDecisionTree::buildTree(const vector<DataPointS>& data, int depth) 
     vector<int> parentLabels;
     for(auto& d : data) parentLabels.push_back(d.label);
     for(int feat = 0; feat < nfeat; ++feat) {
-        set<double> vals;
+        CustomSet<double> vals;
         for(auto& d : data) vals.insert(d.features[feat]);
-        vector<double> sorted(vals.begin(), vals.end());
+        vector<double> sorted = vals.toVector();
         for(size_t i = 0; i + 1 < sorted.size(); ++i) {
             double threshold = (sorted[i] + sorted[i+1])/2.0;
             vector<DataPointS> l, r;
