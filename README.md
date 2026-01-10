@@ -1,139 +1,69 @@
 # VitaCare Pro - Multi-Disease Detection System
 
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](https://github.com)
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](https://github.com/abdulrafay1402/VitaCare.Pro)
 [![Python](https://img.shields.io/badge/Python-3.13-blue)](https://www.python.org/)
 [![C++](https://img.shields.io/badge/C%2B%2B-17-orange)](https://isocpp.org/)
-[![Accuracy](https://img.shields.io/badge/Accuracy-98%25+-brightgreen)](https://github.com)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![Accuracy](https://img.shields.io/badge/Accuracy-98%25+-brightgreen)](https://github.com/abdulrafay1402/VitaCare.Pro)
 
-A production-ready hospital management system demonstrating the practical application of Data Structures and Algorithms (DSA) in machine learning and medical diagnosis. Built with C++ DSA engine and Python Flask web application.
+An intelligent hospital management system combining C++ DSA implementations with machine learning for accurate disease prediction. Achieves 98%+ accuracy across diabetes, heart disease, and breast cancer detection.
 
----
-
-## 📋 Table of Contents
-
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [System Architecture](#-system-architecture)
-- [Technologies Used](#-technologies-used)
-- [Installation](#-installation)
-- [Usage](#-usage)
-- [Model Performance](#-model-performance)
-- [Project Structure](#-project-structure)
-- [Database Schema](#-database-schema)
-- [DSA Implementation](#-dsa-implementation)
-- [Team](#-team)
-- [License](#-license)
+**Repository:** [github.com/abdulrafay1402/VitaCare.Pro](https://github.com/abdulrafay1402/VitaCare.Pro)
 
 ---
 
 ## 🎯 Overview
 
-**VitaCare Pro** is an advanced medical diagnostic system that leverages custom-built data structures and algorithms to provide accurate disease predictions. The system combines:
+VitaCare Pro demonstrates practical DSA applications in healthcare through:
+- **Custom C++ DSA Engine** - HashMap, Decision Trees, Priority Queues, Graphs
+- **ML-Powered Predictions** - 98%+ accuracy using entropy-based decision trees
+- **Clinical Integration** - ADA, ACC/AHA, WDBC medical guidelines
+- **Full-Stack Web App** - Flask backend with responsive UI
 
-- **High-Performance C++ Engine** - Custom DSA implementations (HashMap, Decision Trees, Priority Queues, Graphs)
-- **Flask Web Application** - User-friendly interface for healthcare professionals and patients
-- **Machine Learning Models** - Decision trees trained on real-world medical datasets
-- **MySQL Database** - Secure patient records and prediction history
-- **Clinical Guidelines Integration** - ADA, ACC/AHA, and WDBC research standards
-
-### Supported Diseases
-
-1. **Diabetes** - Type 2 diabetes risk assessment
-2. **Heart Disease** - Cardiovascular disease prediction
-3. **Breast Cancer** - Malignancy classification
+### Disease Detection
+- **Diabetes** (98.18% accuracy) - Type 2 risk assessment
+- **Heart Disease** (98.02% accuracy) - Cardiovascular prediction  
+- **Breast Cancer** (99.82% accuracy) - Malignancy classification
 
 ---
 
 ## ✨ Key Features
 
-### 🏥 Medical Capabilities
+**Medical Capabilities**
+- Multi-disease detection with 98%+ accuracy
+- Clinical guidelines integration (ADA, ACC/AHA, WDBC)
+- Risk stratification (Low/Moderate/High)
+- Adaptive confidence scoring (65-95%)
 
-- **Multi-Disease Detection** - Three disease prediction models with 98%+ accuracy
-- **Clinical Rule Integration** - Evidence-based medical guidelines
-- **Risk Stratification** - Low, Moderate, High severity classification
-- **Confidence Scoring** - Adaptive 65-95% confidence calculation
-- **Percentile Analysis** - Dataset-based outlier detection
-
-### 🔐 Security & Access
-
-- **Role-Based Authentication** - Admin, Doctor, Patient, Staff roles
-- **PBKDF2 Password Hashing** - 1000 rounds with salt
-- **Session Management** - Secure cookie-based sessions
-- **SQL Injection Prevention** - Parameterized queries
-
-### ⚡ Performance
-
-- **Single Prediction**: < 1ms
-- **Batch Processing**: ~200ms for 1000 patients
-- **Scalability**: Handles 100,000+ patient records
-- **Lookup Complexity**: O(1) average with custom HashMap
-
-### 🎨 User Interface
-
-- **Responsive Design** - Mobile, tablet, desktop support
-- **Progressive Web App** - Service worker for offline capability
-- **Modern UI/UX** - Gradient themes, animations, toast notifications
-- **OCR Support** - Tesseract integration for medical report scanning
-- **Data Visualization** - Risk gauges, charts, analysis dashboards
+**Technical Highlights**
+- Custom C++ DSA implementations (O(1) HashMap lookup)
+- Single prediction: <1ms, Batch: 200ms for 1000 patients
+- Role-based authentication (Admin/Doctor/Staff/Patient)
+- PBKDF2 password hashing, SQL injection prevention
+- OCR support for medical report scanning
+- Responsive PWA with offline capability
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Web Interface (Flask)                    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  Admin   │  │  Doctor  │  │  Patient │  │  Staff   │   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
-└───────┼─────────────┼─────────────┼─────────────┼──────────┘
-        │             │             │             │
-┌───────▼─────────────▼─────────────▼─────────────▼──────────┐
-│              Python Prediction Engine                        │
-│  ┌────────────────────────────────────────────────────┐     │
-│  │  DSA Analysis  │  Decision Trees  │  Risk Scoring  │     │
-│  └────────────────────────────────────────────────────┘     │
-└───────┬──────────────────────────────────────────┬──────────┘
-        │                                          │
-┌───────▼──────────┐                     ┌─────────▼──────────┐
-│  C++ DSA Engine  │                     │  MySQL Database    │
-│  ┌─────────────┐ │                     │  ┌───────────────┐ │
-│  │ HashMap     │ │                     │  │ Users         │ │
-│  │ DecisionTree│ │                     │  │ Patients      │ │
-│  │ PriorityQ   │ │                     │  │ Reports       │ │
-│  │ Graph       │ │                     │  │ Thresholds    │ │
-│  │ Stack/Queue │ │                     │  │ Predictions   │ │
-│  └─────────────┘ │                     │  └───────────────┘ │
-└──────────────────┘                     └────────────────────┘
+Flask Web App (Admin/Doctor/Staff/Patient)
+    ↓
+Python Prediction Engine (DSA Analysis + Risk Scoring)
+    ↓
+C++ DSA Engine ←→ MySQL Database
+(HashMap, Trees,     (Users, Patients,
+ PriorityQ, Graph)    Reports, Predictions)
 ```
 
 ---
 
-## 🛠️ Technologies Used
+## 🛠️ Tech Stack
 
-### Backend
-- **Python 3.13** - Core application logic
-- **Flask 2.3.3** - Web framework
-- **C++ 17** - High-performance DSA engine
-- **pybind11 2.11.1** - C++/Python bindings
-- **MySQL 5.7+** - Database management
-
-### Frontend
-- **HTML5/CSS3** - Structure and styling
-- **JavaScript (ES6+)** - Client-side interactivity
-- **Bootstrap 5** - Responsive framework
-- **Chart.js** - Data visualization
-
-### Machine Learning
-- **Custom Decision Trees** - C++ implementation
-- **Entropy-based Splitting** - Information gain criterion
-- **Cross-validation** - Training/testing split
-
-### Additional Tools
-- **CMake 3.12+** - Build system
-- **Tesseract OCR** - Medical report scanning
-- **Git** - Version control
+**Backend:** Python 3.13, Flask 2.3.3, C++17, pybind11, MySQL 5.7+  
+**Frontend:** HTML5/CSS3, JavaScript ES6+, Bootstrap 5, Chart.js  
+**ML/DSA:** Custom decision trees (C++), entropy-based splitting  
+**Tools:** CMake 3.12+, Tesseract OCR, Git
 
 ---
 
@@ -236,68 +166,22 @@ Access the application at: **http://localhost:5000**
 
 ## 📖 Usage
 
-### For Administrators
-
-1. **Login** - Navigate to `/admin/login` (default: admin/admin)
-2. **Manage Users** - Create doctors, staff, and patients
-3. **System Configuration** - Set disease thresholds
-4. **View Analytics** - Monitor system usage and predictions
-
-### For Doctors/Staff
-
-1. **Login** - Use credentials provided by admin
-2. **Patient Management** - Register and manage patient records
-3. **Make Predictions** - Input medical parameters or upload reports
-4. **View History** - Access patient prediction history
-5. **OCR Upload** - Scan medical reports for automatic data extraction
-
-### For Patients
-
-1. **Login** - Use credentials provided by hospital
-2. **View Reports** - Access your medical reports and predictions
-3. **History** - View past consultations and risk assessments
-4. **Download** - Export reports as PDF
+**Admin:** Manage users, configure thresholds, view analytics (`/admin/login`)  
+**Doctor/Staff:** Register patients, make predictions, upload OCR reports  
+**Patient:** View reports, prediction history, download PDFs
 
 ---
 
-## 📊 Model Performance
+## 📊 Performance
 
-### Accuracy Metrics
+| Disease | Samples | Accuracy | Parameters |
+|---------|---------|----------|------------|
+| **Diabetes** | 768 | 98.18% | depth=15, split=4 |
+| **Heart Disease** | 303 | 98.02% | depth=12, split=5 |
+| **Breast Cancer** | 569 | 99.82% | depth=12, split=4 |
 
-| Disease | Samples | Accuracy | Precision | Recall | F1-Score |
-|---------|---------|----------|-----------|--------|----------|
-| **Diabetes** | 768 | 98.18% | 97.5% | 96.8% | 97.1% |
-| **Heart Disease** | 303 | 98.02% | 97.2% | 98.1% | 97.6% |
-| **Breast Cancer** | 569 | 99.82% | 99.6% | 99.7% | 99.6% |
-
-### Training Parameters
-
-```python
-# Optimized hyperparameters
-{
-    "diabetes": {
-        "max_depth": 15,
-        "min_samples_split": 4,
-        "criterion": "entropy"
-    },
-    "heart": {
-        "max_depth": 12,
-        "min_samples_split": 5,
-        "criterion": "entropy"
-    },
-    "breast_cancer": {
-        "max_depth": 12,
-        "min_samples_split": 4,
-        "criterion": "entropy"
-    }
-}
-```
-
-### Dataset Information
-
-- **Diabetes**: Pima Indians Diabetes Dataset (768 samples, 35% positive)
-- **Heart Disease**: Cleveland Heart Disease Dataset (303 samples, 55% disease)
-- **Breast Cancer**: Wisconsin Diagnostic Breast Cancer (569 samples, WDBC)
+**Datasets:** Pima Indians Diabetes, Cleveland Heart Disease, Wisconsin WDBC  
+**Training:** Entropy criterion, optimized hyperparameters
 
 ---
 
@@ -391,203 +275,55 @@ Multi-Disease-Detect-Support-System/
 
 ---
 
-## 🗄️ Database Schema
+## 🗄️ Database
 
-### Users Table
-```sql
-CREATE TABLE users (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'doctor', 'patient', 'staff'),
-    name VARCHAR(100),
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Patients Table
-```sql
-CREATE TABLE patients (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT,
-    age INT,
-    gender ENUM('Male', 'Female', 'Other'),
-    blood_group VARCHAR(5),
-    address TEXT,
-    emergency_contact VARCHAR(20),
-    medical_history TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
-
-### Reports Table
-```sql
-CREATE TABLE reports (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    patient_id INT,
-    uploaded_by INT,
-    file_path VARCHAR(255),
-    report_type VARCHAR(50),
-    report_date DATE,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (patient_id) REFERENCES patients(id),
-    FOREIGN KEY (uploaded_by) REFERENCES users(id)
-);
-```
-
-### Predictions Table
-```sql
-CREATE TABLE predictions (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    patient_id INT,
-    disease_type VARCHAR(50),
-    prediction_result INT,
-    confidence DECIMAL(5,2),
-    risk_score INT,
-    parameters JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (patient_id) REFERENCES patients(id)
-);
-```
-
-### Disease Thresholds Table
-```sql
-CREATE TABLE disease_thresholds (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    disease_type VARCHAR(50),
-    parameter_name VARCHAR(50),
-    min_value DECIMAL(10,2),
-    max_value DECIMAL(10,2),
-    unit VARCHAR(20)
-);
-```
+**Tables:** users, patients, reports, predictions, disease_thresholds  
+**Relationships:** Patients → Users (FK), Reports → Patients/Users (FK), Predictions → Patients (FK)  
+**Features:** Auto-initialization, connection pooling, parameterized queries
 
 ---
 
 ## 🧮 DSA Implementation
 
-### Custom Data Structures
+| Data Structure | Purpose | Complexity |
+|----------------|---------|------------|
+| **HashMap** | Threshold lookups | O(1) avg |
+| **Decision Tree** | Disease classification | O(log n) |
+| **Priority Queue** | Risk ranking | O(log n) |
+| **Graph** | Symptom-disease mapping | O(V+E) |
+| **QuickSort/MergeSort** | Risk factor sorting | O(n log n) |
+| **KMP/Boyer-Moore** | Report text search | O(n+m) |
 
-#### 1. HashMap (Double Hashing)
-- **Purpose**: O(1) threshold lookups
-- **Implementation**: Custom hash function with collision resolution
-- **Capacity**: Dynamic resizing (load factor 0.75)
-
-```cpp
-class HashMap {
-    size_t hash1(const std::string& key);
-    size_t hash2(const std::string& key);
-    void insert(const std::string& key, const Value& value);
-    Value get(const std::string& key);
-};
-```
-
-#### 2. Decision Tree (Binary)
-- **Purpose**: Disease classification
-- **Splitting**: Entropy-based (Information Gain)
-- **Pruning**: Min samples split constraint
-
-```cpp
-class DecisionTree {
-    void train(vector<DataPoint>& data, int max_depth, int min_samples);
-    int predict(const vector<double>& features);
-    double calculate_entropy(const vector<DataPoint>& data);
-};
-```
-
-#### 3. Priority Queue (Max-Heap)
-- **Purpose**: Disease ranking by risk
-- **Operations**: O(log n) insert/extract
-- **Heapify**: Bottom-up construction
-
-```cpp
-class PriorityQueue {
-    void push(double priority, const std::string& value);
-    std::pair<double, std::string> pop();
-    void heapify_up(size_t index);
-    void heapify_down(size_t index);
-};
-```
-
-#### 4. Graph (Adjacency List)
-- **Purpose**: Symptom-disease relationships
-- **Representation**: HashMap of vectors
-- **Traversal**: BFS for disease discovery
-
-```cpp
-class SymptomDiseaseGraph {
-    void add_edge(const std::string& symptom, const std::string& disease);
-    vector<string> get_diseases_for_symptom(const std::string& symptom);
-};
-```
-
-#### 5. Sorting Algorithms
-- **QuickSort**: O(n log n) average, in-place
-- **MergeSort**: O(n log n) guaranteed, stable
-- **Use Case**: Risk factor sorting
-
-#### 6. String Search
-- **KMP**: O(n + m) pattern matching
-- **Boyer-Moore**: O(n/m) best case
-- **Use Case**: Medical report parsing
+**Features:** Double hashing, entropy-based splitting, max-heap, adjacency list, in-place sorting
 
 ---
 
-## 👥 Team
+## 👥 Author
 
-| Name | Roll Number | Role |
-|------|-------------|------|
-| **Afshal Liaquat** | 24K-2558 | Group Leader, Backend Development |
-| **Abdul Rafay** | 24K-3007 | C++ DSA Engine, Algorithm Design |
-| **Bisma Shahid** | 24K-3012 | Frontend Development, Database Design |
+**Abdul Rafay** | Roll: 24K-3007  
+C++ DSA Engine, Algorithm Design, Backend Development
 
-**Course**: Data Structures and Algorithms  
-**Institution**: Your University Name  
-**Semester**: Fall 2025  
-**Instructor**: Dr. Instructor Name
+**Team Members:**  
+- Afshal Liaquat (24K-2558) - Group Leader, Backend  
+- Bisma Shahid (24K-3012) - Frontend, Database
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **Datasets**: UCI Machine Learning Repository
-- **Medical Guidelines**: ADA (American Diabetes Association), ACC/AHA (American College of Cardiology/American Heart Association)
-- **Research**: Wisconsin Diagnostic Breast Cancer (WDBC) study
-- **Libraries**: Flask, pybind11, Tesseract OCR
-- **Inspiration**: Real-world healthcare challenges and DSA applications
+**Course:** Data Structures and Algorithms | Fall 2025
 
 ---
 
 ## 📞 Contact
 
-For questions, suggestions, or contributions:
-
-- **Email**: your.email@example.com
-- **GitHub**: [Project Repository](https://github.com/yourusername/Multi-Disease-Detect-Support-System)
-- **Issues**: [Report Issues](https://github.com/yourusername/Multi-Disease-Detect-Support-System/issues)
+**GitHub:** [abdulrafay1402](https://github.com/abdulrafay1402)  
+**Repository:** [VitaCare.Pro](https://github.com/abdulrafay1402/VitaCare.Pro)  
+**Issues:** [Report Issues](https://github.com/abdulrafay1402/VitaCare.Pro/issues)
 
 ---
 
-## 🔮 Future Enhancements
+## 🙏 Acknowledgments
 
-- [ ] Additional disease models (Lung Cancer, Kidney Disease)
-- [ ] Real-time prediction API (RESTful)
-- [ ] Mobile application (React Native)
-- [ ] Deep learning integration (CNN for medical imaging)
-- [ ] Multi-language support
-- [ ] Blockchain for medical record security
-- [ ] Telemedicine integration
-- [ ] Wearable device data integration
+- UCI Machine Learning Repository (Datasets)
+- ADA, ACC/AHA, WDBC (Medical Guidelines)
+- Flask, pybind11, Tesseract OCR (Libraries)
 
 ---
 
