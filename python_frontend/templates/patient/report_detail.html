@@ -305,14 +305,49 @@
 
             {% for prediction in predictions %}
             {% set risk_score = (prediction.risk_score or prediction.confidence_score or 0)|float %}
+            {% set backend_severity = (prediction.severity_label or '')|lower %}
+            {% set border_color = '#44ff44' %}
+            {% set badge_bg = 'rgba(68,255,68,0.2)' %}
+            {% set badge_color = '#44ff44' %}
+            {% set risk_text_color = '#44ff44' %}
+            {% set risk_badge_text = '🟢 Low Risk' %}
+            {% if backend_severity %}
+                {% if 'high' in backend_severity or 'critical' in backend_severity %}
+                    {% set border_color = '#ff4444' %}
+                    {% set badge_bg = 'rgba(255,68,68,0.2)' %}
+                    {% set badge_color = '#ff4444' %}
+                    {% set risk_text_color = '#ff4444' %}
+                    {% set risk_badge_text = '🔴 High Risk' %}
+                {% elif 'moderate' in backend_severity or 'medium' in backend_severity %}
+                    {% set border_color = '#ffaa00' %}
+                    {% set badge_bg = 'rgba(255,170,0,0.2)' %}
+                    {% set badge_color = '#ffaa00' %}
+                    {% set risk_text_color = '#ffaa00' %}
+                    {% set risk_badge_text = '🟡 Medium Risk' %}
+                {% endif %}
+            {% else %}
+                {% if risk_score >= 70 %}
+                    {% set border_color = '#ff4444' %}
+                    {% set badge_bg = 'rgba(255,68,68,0.2)' %}
+                    {% set badge_color = '#ff4444' %}
+                    {% set risk_text_color = '#ff4444' %}
+                    {% set risk_badge_text = '🔴 High Risk' %}
+                {% elif risk_score >= 40 %}
+                    {% set border_color = '#ffaa00' %}
+                    {% set badge_bg = 'rgba(255,170,0,0.2)' %}
+                    {% set badge_color = '#ffaa00' %}
+                    {% set risk_text_color = '#ffaa00' %}
+                    {% set risk_badge_text = '🟡 Medium Risk' %}
+                {% endif %}
+            {% endif %}
             <div
-                style="background: var(--nav-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 6px solid {% if risk_score >= 70 %}#ff4444{% elif risk_score >= 40 %}#ffaa00{% else %}#44ff44{% endif %}; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                style="background: var(--nav-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 6px solid {{ border_color }}; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <h3 style="color: var(--accent); margin: 0; font-size: 1.3em;">{{ prediction.disease_name if
                         prediction.disease_name else 'Disease Prediction' }}</h3>
                     <span
-                        style="padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9em; {% if risk_score >= 70 %}background: rgba(255,68,68,0.2); color: #ff4444;{% elif risk_score >= 40 %}background: rgba(255,170,0,0.2); color: #ffaa00;{% else %}background: rgba(68,255,68,0.2); color: #44ff44;{% endif %}">
+                        style="padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9em; background: {{ badge_bg }}; color: {{ badge_color }};">
                         {{ "%.1f"|format(risk_score) }}% Risk
                     </span>
                 </div>
@@ -322,9 +357,8 @@
                     <div style="background: rgba(8, 217, 214, 0.1); padding: 12px; border-radius: 8px;">
                         <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Risk Level</p>
                         <p
-                            style="margin: 0; font-weight: 700; {% if risk_score >= 70 %}color: #ff4444;{% elif risk_score >= 40 %}color: #ffaa00;{% else %}color: #44ff44;{% endif %}">
-                            {% if risk_score >= 70 %}🔴 High Risk{% elif risk_score >= 40 %}🟡 Medium Risk{% else %}🟢
-                            Low Risk{% endif %}
+                            style="margin: 0; font-weight: 700; color: {{ risk_text_color }};">
+                            {{ risk_badge_text }}
                         </p>
                     </div>
                     <div style="background: rgba(8, 217, 214, 0.1); padding: 12px; border-radius: 8px;">
@@ -335,7 +369,7 @@
                     <div style="background: rgba(8, 217, 214, 0.1); padding: 12px; border-radius: 8px;">
                         <p style="color: var(--text-muted); font-size: 0.85em; margin: 0 0 5px 0;">Analysis Method</p>
                         <p style="margin: 0; font-weight: 700; color: var(--accent);">{{ prediction.method if
-                            prediction.method else 'C++ Decision Tree (DSA)' }}</p>
+                            prediction.method else 'Machine Learning' }}</p>
                     </div>
                 </div>
 

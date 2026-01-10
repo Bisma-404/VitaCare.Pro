@@ -184,18 +184,31 @@
         <div class="card">
             <h1>{{ disease_name }} Result</h1>
 
+            {% set backend_severity = severity_label|default('')|lower %}
             {% set risk = risk_score|default(0)|float %}
             {% set risk_level = 'low' %}
             {% set risk_emoji = '🟢' %}
             {% set risk_label = 'Low Risk' %}
-            {% if risk >= 70 %}
-                {% set risk_level = 'high' %}
-                {% set risk_emoji = '🔴' %}
-                {% set risk_label = 'High Risk' %}
-            {% elif risk >= 40 %}
-                {% set risk_level = 'medium' %}
-                {% set risk_emoji = '🟡' %}
-                {% set risk_label = 'Medium Risk' %}
+            {% if backend_severity %}
+                {% if 'high' in backend_severity or 'critical' in backend_severity %}
+                    {% set risk_level = 'high' %}
+                    {% set risk_emoji = '🔴' %}
+                    {% set risk_label = 'High Risk' %}
+                {% elif 'moderate' in backend_severity or 'medium' in backend_severity %}
+                    {% set risk_level = 'medium' %}
+                    {% set risk_emoji = '🟡' %}
+                    {% set risk_label = 'Medium Risk' %}
+                {% endif %}
+            {% else %}
+                {% if risk >= 70 %}
+                    {% set risk_level = 'high' %}
+                    {% set risk_emoji = '🔴' %}
+                    {% set risk_label = 'High Risk' %}
+                {% elif risk >= 40 %}
+                    {% set risk_level = 'medium' %}
+                    {% set risk_emoji = '🟡' %}
+                    {% set risk_label = 'Medium Risk' %}
+                {% endif %}
             {% endif %}
             
             <div class="result-badge {{ risk_level }}" style="border-left: 4px solid {% if risk_level == 'high' %}var(--danger){% elif risk_level == 'medium' %}var(--warning){% else %}var(--success){% endif %};">

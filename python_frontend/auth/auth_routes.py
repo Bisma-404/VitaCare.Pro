@@ -31,13 +31,7 @@ def login():
         
         if not user:
             flash('Invalid username or password', 'error')
-            # Log failed login attempt
-            LoginHistoryDAO.create_login_record(
-                None, 
-                request.remote_addr, 
-                request.headers.get('User-Agent', ''),
-                success=False
-            )
+            # Skip logging failed login attempt (user_id is required in schema)
             return redirect(request.url)
         
         # Check user type

@@ -174,17 +174,30 @@
             {% if predictions %}
                 {% for pred in predictions %}
                 {% set risk_score = pred.get('risk_score', pred.get('confidence', 0))|float %}
+                {% set backend_severity = pred.get('severity_label', '')|lower %}
                 {% set risk_level = 'low' %}
                 {% set risk_emoji = '🟢' %}
                 {% set risk_label = 'Low Risk' %}
-                {% if risk_score >= 70 %}
-                    {% set risk_level = 'critical' %}
-                    {% set risk_emoji = '🔴' %}
-                    {% set risk_label = 'High Risk' %}
-                {% elif risk_score >= 40 %}
-                    {% set risk_level = 'medium' %}
-                    {% set risk_emoji = '🟡' %}
-                    {% set risk_label = 'Medium Risk' %}
+                {% if backend_severity %}
+                    {% if 'high' in backend_severity or 'critical' in backend_severity %}
+                        {% set risk_level = 'critical' %}
+                        {% set risk_emoji = '🔴' %}
+                        {% set risk_label = 'High Risk' %}
+                    {% elif 'moderate' in backend_severity or 'medium' in backend_severity %}
+                        {% set risk_level = 'medium' %}
+                        {% set risk_emoji = '🟡' %}
+                        {% set risk_label = 'Medium Risk' %}
+                    {% endif %}
+                {% else %}
+                    {% if risk_score >= 70 %}
+                        {% set risk_level = 'critical' %}
+                        {% set risk_emoji = '🔴' %}
+                        {% set risk_label = 'High Risk' %}
+                    {% elif risk_score >= 40 %}
+                        {% set risk_level = 'medium' %}
+                        {% set risk_emoji = '🟡' %}
+                        {% set risk_label = 'Medium Risk' %}
+                    {% endif %}
                 {% endif %}
                 <div class="prediction-card {{ risk_level }}">
                     <h3>{{ pred.disease_name }} {{ risk_emoji }}</h3>
@@ -193,8 +206,7 @@
                     </div>
                     <p><strong>Result:</strong> {{ pred.outcome }}</p>
                     <p><strong>Risk Score:</strong> {{ "%.1f"|format(risk_score) }}/100</p>
-                    <p><strong>Confidence:</strong> {{ "%.1f"|format(pred.get('confidence', risk_score)) }}%</p>
-                    <p><strong>Method:</strong> {{ pred.get('method', 'C++ Decision Tree') }}</p>
+                    <p><strong>Confidence:</strong> {{ "%.1f"|format(pred.confidence_score if pred.confidence_score else 0) }}%</p>
                     {% if pred.get('severity_label') %}
                     <p><strong>Severity:</strong> {{ pred.severity_label }}</p>
                     {% endif %}

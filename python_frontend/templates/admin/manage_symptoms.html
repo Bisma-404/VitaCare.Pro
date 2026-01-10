@@ -309,7 +309,7 @@
 
             <!-- Search -->
             <div class="search-section">
-                <h2 style="font-size: 18px; margin-bottom: 15px;">Search Symptoms (Using DSA)</h2>
+                <h2 style="font-size: 18px; margin-bottom: 15px;">Search Symptoms</h2>
                 <div class="search-box">
                     <input type="text" id="symptomSearch" placeholder="Type to search symptoms..." onkeyup="searchSymptoms()">
                     <button class="btn" onclick="searchSymptoms()">Search</button>
@@ -332,7 +332,12 @@
                         {% if not error %}
                         {% for symptom in symptoms[:50] %}
                         <tr>
-                            <td>{{ symptom.symptom_name if symptom is mapping else symptom }}</td>
+                            <td>
+                                <span style="cursor: pointer; color: var(--accent); text-decoration: underline; text-decoration-style: dotted;" 
+                                      onclick="showSymptomDetails('{{ symptom.symptom_name if symptom is mapping else symptom }}', '{{ symptom.disease_category if symptom is mapping and symptom.disease_category else 'general' }}', '{{ symptom.description if symptom is mapping and symptom.description else 'No description available.' }}')">
+                                    {{ symptom.symptom_name if symptom is mapping else symptom }}
+                                </span>
+                            </td>
                             <td style="text-align: center;">
                                 {% if symptom is mapping and symptom.disease_category %}
                                 <span style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; 
@@ -394,6 +399,30 @@
                 </div>
             </div>
 
+            <!-- Symptom Details Modal -->
+            <div id="symptomDetailsModal" class="modal">
+                <div class="modal-content">
+                    <h2 id="symptomDetailsTitle" style="color: var(--accent); margin-bottom: 20px;">Symptom Details</h2>
+                    <div style="background: var(--nav-bg); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <div style="margin-bottom: 15px;">
+                            <strong style="color: var(--text-main); font-size: 1.1em;">Symptom Name:</strong>
+                            <p id="symptomDetailsName" style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 1em;"></p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong style="color: var(--text-main); font-size: 1.1em;">Disease Category:</strong>
+                            <p id="symptomDetailsCategory" style="margin: 5px 0 0 0;"></p>
+                        </div>
+                        <div>
+                            <strong style="color: var(--text-main); font-size: 1.1em;">Description:</strong>
+                            <p id="symptomDetailsDescription" style="color: var(--text-muted); margin: 5px 0 0 0; line-height: 1.6;"></p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="btn" onclick="closeSymptomDetailsModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <script>
                 function openAddSymptomModal() {
                     document.getElementById('addSymptomModal').classList.add('active');
@@ -401,6 +430,38 @@
 
                 function closeAddSymptomModal() {
                     document.getElementById('addSymptomModal').classList.remove('active');
+                }
+
+                function showSymptomDetails(name, category, description) {
+                    document.getElementById('symptomDetailsName').textContent = name;
+                    
+                    // Format category with color badge
+                    const categoryFormatted = category.replace('_', ' ');
+                    let categoryColor = 'var(--accent)';
+                    let categoryBg = 'rgba(8, 217, 214, 0.2)';
+                    
+                    if (category === 'diabetes') {
+                        categoryColor = '#f59e0b';
+                        categoryBg = 'rgba(245, 158, 11, 0.2)';
+                    } else if (category === 'heart') {
+                        categoryColor = '#ef4444';
+                        categoryBg = 'rgba(239, 68, 68, 0.2)';
+                    } else if (category === 'breast_cancer') {
+                        categoryColor = '#ec4899';
+                        categoryBg = 'rgba(236, 72, 153, 0.2)';
+                    }
+                    
+                    document.getElementById('symptomDetailsCategory').innerHTML = 
+                        `<span style="padding: 6px 16px; border-radius: 16px; font-size: 0.9em; font-weight: 600; background: ${categoryBg}; color: ${categoryColor}; display: inline-block;">
+                            ${categoryFormatted.charAt(0).toUpperCase() + categoryFormatted.slice(1)}
+                        </span>`;
+                    
+                    document.getElementById('symptomDetailsDescription').textContent = description || 'No description available.';
+                    document.getElementById('symptomDetailsModal').classList.add('active');
+                }
+
+                function closeSymptomDetailsModal() {
+                    document.getElementById('symptomDetailsModal').classList.remove('active');
                 }
 
                 document.getElementById('addSymptomForm').addEventListener('submit', async (e) => {
@@ -433,12 +494,12 @@
                     const resultsDiv = document.getElementById('searchResults');
                     
                     if (!query) {
-                        resultsDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 0.9em;">Type to search symptoms using C++ DSA...</span>';
+                        resultsDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 0.9em;">Type to search symptoms...</span>';
                         return;
                     }
 
                     try {
-                        resultsDiv.innerHTML = '<span style="color: var(--accent);">🔍 Searching with C++ DSA...</span>';
+                        resultsDiv.innerHTML = '<span style="color: var(--accent);">🔍 Searching...</span>';
                         
                         const response = await fetch(`{{ url_for('admin.search_symptoms') }}?q=${encodeURIComponent(query)}`);
                         const data = await response.json();

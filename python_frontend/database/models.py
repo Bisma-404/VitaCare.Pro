@@ -438,7 +438,9 @@ class PredictionDAO:
             return prediction_id
         except Error as e:
             print(f"Error creating prediction: {e}")
-            return None    @staticmethod
+            return None
+
+    @staticmethod
     def get_predictions_by_report(report_id):
         """Get all predictions for a report."""
         query = """

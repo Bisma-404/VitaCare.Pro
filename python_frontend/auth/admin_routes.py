@@ -369,18 +369,10 @@ def manage_symptoms():
         # Extract symptom names for DSA
         symptom_names = [s['symptom_name'] for s in symptoms]
         
-        symptom_manager = None
-        symptom_count = 0
-        try:
-            symptom_manager = SymptomManager()
-            # load_symptoms may be heavy or fail if cpp_tree not compiled; guard it
-            symptom_manager.load_symptoms(symptom_names)
-            symptom_count = getattr(symptom_manager, 'get_symptom_count', lambda: len(symptom_names))()
-        except Exception as inner_e:
-            # Log and continue - show partial page with message
-            print(f"SymptomManager load failed: {inner_e}")
-            symptom_manager = None
-            symptom_count = len(symptom_names)
+        # Use C++ SymptomManager (required)
+        symptom_manager = SymptomManager()
+        symptom_manager.load_symptoms(symptom_names)
+        symptom_count = symptom_manager.get_symptom_count()
 
         # Get frequency analytics - join with symptoms table to get symptom_name
         cursor.execute("""
@@ -549,16 +541,26 @@ def analytics():
     """)
     disease_distribution = cursor.fetchall()
     
-    # Risk level distribution - based on prediction_result (0=Low Risk, 1=High Risk)
+    # Risk level distribution - use severity_label (primary) or risk_score (fallback)
     cursor.execute("""
         SELECT 
             CASE 
-                WHEN prediction_result = 1 THEN 'HIGH_RISK'
-                ELSE 'LOW_RISK'
+                WHEN severity_label IS NOT NULL AND severity_label != '' THEN
+                    CASE 
+                        WHEN LOWER(severity_label) LIKE '%high%' OR LOWER(severity_label) LIKE '%critical%' THEN 'HIGH_RISK'
+                        WHEN LOWER(severity_label) LIKE '%moderate%' OR LOWER(severity_label) LIKE '%medium%' THEN 'MODERATE'
+                        ELSE 'LOW_RISK'
+                    END
+                ELSE
+                    CASE 
+                        WHEN risk_score >= 70 THEN 'HIGH_RISK'
+                        WHEN risk_score >= 40 THEN 'MODERATE'
+                        ELSE 'LOW_RISK'
+                    END
             END as risk_level,
             COUNT(*) as count
         FROM predictions
-        GROUP BY prediction_result
+        GROUP BY risk_level
     """)
     risk_distribution = cursor.fetchall()
     
@@ -737,6 +739,14 @@ def predict_disease(disease_type):
             for field in config['fields']:
                 features.append(test_data.get(field['name'], field.get('default', 0)))
 
+            # Prepare metrics for template FIRST (before using them in database)
+            dsa_sub = result.get('dsa_result', {})
+            template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
+            template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
+            template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
+            template_severity = result.get('severity_label', dsa_sub.get('severity_label', None))
+            template_severity_reason = result.get('severity_reason', dsa_sub.get('severity_reason', ''))
+
             # Persist prediction to database (minimal flow)
             try:
                 from database.models import PredictionDAO, PatientReportDAO
@@ -795,14 +805,6 @@ def predict_disease(disease_type):
                     traceback.print_exc()
             except Exception:
                 traceback.print_exc()
-
-            # Prepare metrics for template (fallback to dsa_result when ML replaced top-level keys)
-            dsa_sub = result.get('dsa_result', {})
-            template_thresholds = result.get('threshold_violations', dsa_sub.get('threshold_violations', []))
-            template_symptoms = result.get('symptom_matches', dsa_sub.get('symptom_matches', 0))
-            template_risk = result.get('risk_score', dsa_sub.get('risk_score', 0))
-            template_severity = result.get('severity_label', dsa_sub.get('severity_label', None))
-            template_severity_reason = result.get('severity_reason', dsa_sub.get('severity_reason', ''))
 
             # Render result page (full page response)
             return render_template('admin/predict_result.html', 

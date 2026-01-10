@@ -32,6 +32,7 @@ double SimpleDecisionTree::calcEntropy(const vector<int>& labels) {
     }
     return entropy;
 }
+
 double SimpleDecisionTree::calcGini(const vector<int>& labels) {
     CustomMap<int, int> counts;
     for(auto label : labels) counts[label]++;

@@ -531,31 +531,52 @@
                 </h3>
                 {% for prediction in predictions[:15] %}
                 {% set risk_score = (prediction.risk_score or prediction.confidence_score or 0)|float %}
+                {% set backend_severity = (prediction.severity_label or '')|lower %}
+                {% set border_color = 'var(--success)' %}
+                {% set badge_text = '🟢 Low Risk' %}
+                {% set badge_class = 'badge-low-risk' %}
+                {% set risk_color = 'var(--success)' %}
+                {% if backend_severity %}
+                    {% if 'high' in backend_severity or 'critical' in backend_severity %}
+                        {% set border_color = 'var(--danger)' %}
+                        {% set badge_text = '🔴 High Risk' %}
+                        {% set badge_class = 'badge-high-risk' %}
+                        {% set risk_color = 'var(--danger)' %}
+                    {% elif 'moderate' in backend_severity or 'medium' in backend_severity %}
+                        {% set border_color = 'var(--warning)' %}
+                        {% set badge_text = '🟡 Medium Risk' %}
+                        {% set badge_class = 'badge-medium-risk' %}
+                        {% set risk_color = 'var(--warning)' %}
+                    {% endif %}
+                {% else %}
+                    {% if risk_score >= 70 %}
+                        {% set border_color = 'var(--danger)' %}
+                        {% set badge_text = '🔴 High Risk' %}
+                        {% set badge_class = 'badge-high-risk' %}
+                        {% set risk_color = 'var(--danger)' %}
+                    {% elif risk_score >= 40 %}
+                        {% set border_color = 'var(--warning)' %}
+                        {% set badge_text = '🟡 Medium Risk' %}
+                        {% set badge_class = 'badge-medium-risk' %}
+                        {% set risk_color = 'var(--warning)' %}
+                    {% endif %}
+                {% endif %}
                 <div class="report-card"
-                    style="border-left-color: {% if risk_score >= 70 %}var(--danger){% elif risk_score >= 40 %}var(--warning){% else %}var(--success){% endif %};">
+                    style="border-left-color: {{ border_color }};">
                     <div
                         style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                         <h3 style="margin: 0;">🔬 {{ prediction.disease_name if prediction.disease_name else 'Disease
                             Prediction' }}</h3>
-                        {% if risk_score >= 70 %}
-                        <span class="prediction-badge badge-high-risk">🔴 High Risk</span>
-                        {% elif risk_score >= 40 %}
-                        <span class="prediction-badge badge-medium-risk">🟡 Medium Risk</span>
-                        {% else %}
-                        <span class="prediction-badge badge-low-risk">🟢 Low Risk</span>
-                        {% endif %}
+                        <span class="prediction-badge {{ badge_class }}">{{ badge_text }}</span>
                     </div>
 
                     <div style="color: var(--text-muted); line-height: 1.8;">
                         <p style="margin: 8px 0;">
                             <strong>📊 Risk Score:</strong>
                             <span
-                                style="color: {% if risk_score >= 70 %}var(--danger){% elif risk_score >= 40 %}var(--warning){% else %}var(--success){% endif %}; font-weight: 700; font-size: 1.1em;">
+                                style="color: {{ risk_color }}; font-weight: 700; font-size: 1.1em;">
                                 {{ "%.1f"|format(risk_score) }}%
                             </span>
-                        </p>
-                        <p style="margin: 8px 0;">
-                            <strong>🔍 Analysis Method:</strong> {{ prediction.method if prediction.method else 'DSA' }}
                         </p>
                         {% if prediction.report_date %}
                         <p style="margin: 8px 0;">

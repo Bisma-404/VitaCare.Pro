@@ -218,10 +218,10 @@
                         {% for item in risk_distribution %}
                         <tr>
                             <td>
-                                {% if item.risk_level == 'CRITICAL' %}🔴
-                                {% elif item.risk_level == 'MEDIUM' %}🟡
+                                {% if item.risk_level == 'HIGH_RISK' or item.risk_level == 'CRITICAL' %}🔴
+                                {% elif item.risk_level == 'MEDIUM' or item.risk_level == 'MODERATE' %}🟡
                                 {% else %}🟢{% endif %}
-                                {{ item.risk_level }}
+                                {{ item.risk_level.replace('_', ' ') }}
                             </td>
                             <td><strong>{{ item.count }}</strong></td>
                         </tr>

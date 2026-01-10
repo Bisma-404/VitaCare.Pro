@@ -24,15 +24,9 @@ from database.models import DiseaseThresholdDAO, PatientReportDAO
 from utils.mapping import get_disease_config
 import csv
 
-# Import C++ DSA module only (no ML)
-try:
-    import cpp_tree
-    from cpp_tree import MedicalSorting, RiskScorer, RiskFactors, SymptomManager
-    CPP_AVAILABLE = True
-except ImportError:
-    print("Warning: cpp_tree module not fully available.")
-    cpp_tree = None
-    CPP_AVAILABLE = False
+# Import C++ DSA module (required)
+import cpp_tree
+from cpp_tree import MedicalSorting, RiskScorer, RiskFactors, SymptomManager
 
 
 class PredictionEngine:
@@ -53,6 +47,10 @@ class PredictionEngine:
         
         # Load symptom-disease relationships
         self._load_symptom_disease_network()
+        
+        # Load trained C++ decision tree models
+        self.models = {}
+        self._load_cpp_models()
     
     def _load_thresholds(self):
         """Load disease thresholds from database into HashMap."""
@@ -89,6 +87,87 @@ class PredictionEngine:
             for disease in diseases:
                 self.symptom_graph.add_node(disease, 'disease')
                 self.symptom_graph.add_edge(symptom, disease, bidirectional=False)
+    
+    def _auto_train_model(self, disease_type, datasets_dir, output_path):
+        """Auto-train a C++ decision tree model if it doesn't exist."""
+        dataset_path = os.path.join(datasets_dir, f"{disease_type}.csv")
+        
+        if not os.path.exists(dataset_path):
+            raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+        
+        print(f"Training {disease_type} model from {dataset_path}...")
+        
+        # Import training logic
+        from utils.mapping import get_disease_config
+        config = get_disease_config(disease_type)
+        if not config:
+            raise ValueError(f"Unknown disease type: {disease_type}")
+        
+        # Load dataset
+        data_points = []
+        with open(dataset_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    features = []
+                    for col in config['columns']:
+                        value = row.get(col, '0').strip()
+                        if value == '':
+                            value = '0'
+                        features.append(float(value))
+                    
+                    target_col = config['target_column']
+                    label_value = row.get(target_col, '0').strip()
+                    
+                    if 'target_mapping' in config:
+                        if label_value in config['target_mapping']:
+                            label = config['target_mapping'][label_value]
+                        else:
+                            continue
+                    else:
+                        label = int(label_value)
+                    
+                    dp = cpp_tree.DataPoint(features, label)
+                    data_points.append(dp)
+                except (ValueError, KeyError) as e:
+                    continue
+        
+        print(f"Loaded {len(data_points)} samples")
+        
+        # Train model with optimized parameters for better accuracy
+        tree = cpp_tree.DecisionTree()
+        # Increase max_depth for better feature learning
+        # Adjust min_samples_split to avoid overfitting
+        max_depth = 15 if disease_type == 'diabetes' else 12
+        min_samples = 5 if disease_type == 'heart' else 4
+        tree.train(data_points, max_depth=max_depth, min_samples_split=min_samples, criterion='entropy')
+        
+        # Save model
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        tree.save(output_path)
+        print(f"Model trained and saved to {output_path}")
+    
+    def _load_cpp_models(self):
+        """Load trained C++ decision tree models for each disease. Auto-train if missing."""
+        models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
+        datasets_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'datasets')
+        disease_types = ['diabetes', 'heart', 'breast_cancer']
+        
+        for disease_type in disease_types:
+            model_path = os.path.join(models_dir, f"{disease_type}_model.txt")
+            
+            # If model doesn't exist, train it automatically
+            if not os.path.exists(model_path):
+                print(f"Model not found for {disease_type}, training automatically...")
+                self._auto_train_model(disease_type, datasets_dir, model_path)
+            
+            # Load the model
+            model = cpp_tree.DecisionTree()
+            if not model.load(model_path):
+                raise RuntimeError(f"Failed to load C++ model for {disease_type} from {model_path}")
+            
+            self.models[disease_type] = model
+            print(f"Loaded C++ DecisionTree model for {disease_type}")
 
     def _compute_percentiles(self, values, percents=(75, 90, 95)):
         """Compute percentiles without external dependencies. Returns dict of percent->value."""
@@ -212,7 +291,7 @@ class PredictionEngine:
                         'value': value,
                         'normal_range': f"{min_val}-{max_val} {threshold.get('unit', '')}".strip()
                     })
-                    risk_score += 15  # reduced weight to make thresholds less sensitive
+                    risk_score += 8  # balanced weight for threshold violations
         
         # Check symptom correlations using graph
         symptom_matches = 0
@@ -224,32 +303,58 @@ class PredictionEngine:
             diseases = self.symptom_graph.get_diseases_for_symptom(symptom)
             if disease_type in diseases:
                 symptom_matches += 1
-                risk_score += 10  # reduced weight for symptom matches
+                risk_score += 3  # Reduced from 5 to 3
         
-        # Apply decision tree rules
+        # Apply decision tree rules - MODEL IS PRIMARY DECISION MAKER
         decision = self._apply_decision_tree(test_data, disease_type)
-        if decision:
-            # apply a slightly reduced decision boost to lower sensitivity
-            risk_score += max(0, decision.get('risk_boost', 0) - 5)
+        model_prediction = 0
+        model_confidence = 0.85
         
-        # Apply clinical / heuristic rules to adjust severity
+        if decision:
+            # Decision tree is the main predictor
+            boost = decision.get('risk_boost', 0)
+            model_confidence = decision.get('confidence', 0.85)
+            # Use adaptive threshold based on disease type
+            thresholds = {'diabetes': 35, 'heart': 40, 'breast_cancer': 38}
+            threshold = thresholds.get(disease_type, 35)
+            model_prediction = 1 if boost >= threshold else 0
+            risk_score += boost
+        
+        # Apply clinical rules for fine-tuning (complement the model, don't override)
         severity_label, severity_reason, adjusted_score = self._apply_clinical_rules(
-            disease_type, test_data, threshold_violations, symptom_matches, risk_score
+            disease_type, test_data, threshold_violations, symptom_matches, risk_score, model_prediction
         )
 
-        # Map adjusted score to prediction + confidence
-        result = 0  # Low risk by default
+        # Map to prediction + confidence (balanced approach)
+        # Final decision: model prediction + clinical validation
+        result = model_prediction
+        
+        # If clinical score strongly disagrees with model, adjust result
+        if model_prediction == 1 and adjusted_score < 30:
+            result = 0  # Clinical evidence too weak despite model
+        elif model_prediction == 0 and adjusted_score >= 75:
+            result = 1  # Clinical evidence very strong despite model
+        
+        # Calculate confidence based on agreement between model and clinical
         confidence = 0
-
-        if adjusted_score >= 60 or severity_label == 'High':
-            result = 1
-            confidence = min(95, int(adjusted_score) + 5)
-        elif adjusted_score >= 40 or severity_label == 'Moderate':
-            result = 1
-            confidence = max(50, int(adjusted_score) + 5)
-        else:
-            result = 0
-            confidence = max(10, 100 - int(adjusted_score))
+        agreement = (adjusted_score >= 50) == (result == 1)
+        
+        if result == 1:  # High Risk prediction
+            base_conf = int(model_confidence * 100)
+            if agreement and adjusted_score >= 70:
+                confidence = min(95, base_conf + 5)
+            elif agreement:
+                confidence = min(88, base_conf)
+            else:
+                confidence = max(65, base_conf - 10)
+        else:  # Low Risk prediction  
+            base_conf = int(model_confidence * 100)
+            if agreement and adjusted_score <= 30:
+                confidence = min(92, base_conf + 5)
+            elif agreement:
+                confidence = min(85, base_conf)
+            else:
+                confidence = max(65, base_conf - 10)
 
         return {
             'prediction': result,
@@ -261,14 +366,14 @@ class PredictionEngine:
             'severity_reason': severity_reason,
             'threshold_violations': threshold_violations,
             'symptom_matches': symptom_matches,
-            'method': 'DSA',
+            'method': 'Machine Learning',
             'decision_rules_applied': decision is not None
         }
 
-    def _apply_clinical_rules(self, disease_type, test_data, threshold_violations, symptom_matches, risk_score):
+    def _apply_clinical_rules(self, disease_type, test_data, threshold_violations, symptom_matches, risk_score, model_prediction):
         """
-        Apply disease-specific clinical heuristics (based on widely used cutoffs)
-        and a small percentile/combination logic to determine a severity label.
+        Apply disease-specific clinical heuristics for fine-tuning.
+        Model prediction is the primary decision maker.
 
         Returns: (severity_label, reason, adjusted_score)
         """
@@ -295,44 +400,83 @@ class PredictionEngine:
                     bmi = None
 
             if glucose is not None:
+                # Clinical cutoffs: Normal <100, Prediabetes 100-125, Diabetes >=126
                 if glucose >= 126:
-                    adjusted += 25
+                    adjusted += 12  # Strong clinical indicator
                     strong_flags += 1
-                    reasons.append(f'glucose >=126 ({glucose})')
-                elif 100 <= glucose < 126:
-                    adjusted += 12
-                    reasons.append(f'prediabetes-range glucose {glucose}')
+                    reasons.append(f'glucose >=126 mg/dL (diabetic range: {glucose:.1f})')
+                elif glucose >= 100:
+                    adjusted += 6  # Moderate indicator
+                    reasons.append(f'glucose {glucose:.1f} mg/dL (prediabetic range)')
+                elif glucose < 70:
+                    adjusted += 3  # Hypoglycemia can indicate issues
+                    reasons.append(f'low glucose {glucose:.1f} mg/dL')
 
             if bmi is not None:
+                # Clinical BMI categories: Normal 18.5-24.9, Overweight 25-29.9, Obese >=30
                 if bmi >= 35:
-                    adjusted += 10
+                    adjusted += 8  # Class 2+ obesity
                     strong_flags += 1
-                    reasons.append(f'bmi >=35 ({bmi})')
+                    reasons.append(f'BMI {bmi:.1f} (severe obesity)')
                 elif bmi >= 30:
-                    adjusted += 6
-                    reasons.append(f'bmi >=30 ({bmi})')
+                    adjusted += 5  # Class 1 obesity
+                    reasons.append(f'BMI {bmi:.1f} (obese)')
+                elif bmi >= 25:
+                    adjusted += 2  # Overweight
+                    reasons.append(f'BMI {bmi:.1f} (overweight)')
 
         elif disease_type == 'heart':
-            # Simple heart risk heuristics
+            # Clinical heart disease risk factors
             age = float(test_data.get('age') or 0)
             chol = float(test_data.get('chol') or 0)
             sbp = float(test_data.get('trestbps') or test_data.get('systolic_bp') or 0)
+            thalach = float(test_data.get('thalach') or 0)  # Max heart rate
+            oldpeak = float(test_data.get('oldpeak') or 0)  # ST depression
 
-            if age >= 65 and chol > 240 and sbp > 140:
-                # more conservative: smaller bump for heart triple-risk
-                adjusted += 15
-                strong_flags += 1
-                reasons.append(f'age+chol+bp high (age {age}, chol {chol}, bp {sbp})')
-            elif chol > 240 or sbp > 140:
-                adjusted += 8
-                reasons.append(f'high chol or high BP (chol {chol}, bp {sbp})')
-            elif age >= 60:
+            # Age risk (Framingham criteria)
+            if age >= 65:
                 adjusted += 6
-                reasons.append(f'age >=60 ({age})')
+                reasons.append(f'age {age} (high risk)')
+            elif age >= 55:
+                adjusted += 3
+                reasons.append(f'age {age} (moderate risk)')
+            
+            # Cholesterol (ACC/AHA guidelines: Desirable <200, Borderline 200-239, High >=240)
+            if chol >= 240:
+                adjusted += 8
+                strong_flags += 1
+                reasons.append(f'cholesterol {chol} mg/dL (high)')
+            elif chol >= 200:
+                adjusted += 4
+                reasons.append(f'cholesterol {chol} mg/dL (borderline high)')
+            
+            # Blood pressure (Hypertension: Stage 1 >=130/80, Stage 2 >=140/90)
+            if sbp >= 140:
+                adjusted += 7
+                strong_flags += 1
+                reasons.append(f'blood pressure {sbp} mmHg (hypertensive)')
+            elif sbp >= 130:
+                adjusted += 4
+                reasons.append(f'blood pressure {sbp} mmHg (elevated)')
+            
+            # Maximum heart rate (220-age is predicted max)
+            if thalach > 0:
+                predicted_max = 220 - age
+                if thalach < predicted_max * 0.6:  # Poor exercise capacity
+                    adjusted += 5
+                    reasons.append(f'low max heart rate {thalach} bpm')
+            
+            # ST depression (oldpeak) - strong indicator
+            if oldpeak >= 2.0:
+                adjusted += 10
+                strong_flags += 1
+                reasons.append(f'ST depression {oldpeak} (significant ischemia)')
+            elif oldpeak >= 1.0:
+                adjusted += 5
+                reasons.append(f'ST depression {oldpeak} (mild ischemia)')
 
         elif disease_type == 'breast_cancer':
-            # Heuristics for breast cancer features (WDBC dataset fields)
-            # Use radius_mean, texture_mean, perimeter_mean as indicators
+            # Clinical features for breast cancer (WDBC dataset analysis)
             def getf(name):
                 try:
                     return float(test_data.get(name) or 0)
@@ -342,26 +486,67 @@ class PredictionEngine:
             radius = getf('radius_mean')
             texture = getf('texture_mean')
             perimeter = getf('perimeter_mean')
+            area = getf('area_mean')
+            concavity = getf('concavity_mean')
+            concave_pts = getf('concave_points_mean')
 
-            # Common heuristic: radius_mean > 15 associated with malignant larger masses
-            if radius > 15 or perimeter > 100:
-                adjusted += 30
-                strong_flags += 1
-                reasons.append(f'large radius/perimeter (r={radius}, p={perimeter})')
-            elif texture > 25:
+            # Based on WDBC research: Malignant tumors typically have:
+            # - Larger size (radius > 17, perimeter > 110)
+            # - Higher concavity and concave points
+            # - More irregular texture
+            
+            # Size indicators (strong predictors)
+            if radius > 17 or perimeter > 115:
                 adjusted += 12
-                reasons.append(f'high texture ({texture})')
+                strong_flags += 1
+                reasons.append(f'large tumor size (radius={radius:.1f}mm, perimeter={perimeter:.1f}mm)')
+            elif radius > 14 or perimeter > 95:
+                adjusted += 6
+                reasons.append(f'moderate tumor size (radius={radius:.1f}mm)')
+            
+            # Concavity features (malignant tumors are more concave)
+            if concavity > 0.15 or concave_pts > 0.08:
+                adjusted += 10
+                strong_flags += 1
+                reasons.append(f'high concavity (concavity={concavity:.3f}, points={concave_pts:.3f})')
+            elif concavity > 0.08 or concave_pts > 0.04:
+                adjusted += 5
+                reasons.append(f'moderate concavity features')
+            
+            # Texture irregularity
+            if texture > 25:
+                adjusted += 6
+                reasons.append(f'irregular texture ({texture:.1f})')
+            elif texture > 20:
+                adjusted += 3
+                reasons.append(f'moderately irregular texture ({texture:.1f})')
+            
+            # Area (correlated with radius but useful)
+            if area > 900:
+                adjusted += 4
+                reasons.append(f'large tumor area ({area:.0f} mm²)')
 
-        # Simple combination logic: increase severity if multiple violations/symptoms
-        if len(threshold_violations) >= 2:
-            adjusted += 12
-            reasons.append(f'{len(threshold_violations)} threshold violations')
+        # Combination logic: multiple risk factors
+        if len(threshold_violations) >= 3:
+            adjusted += 8
+            strong_flags += 1
+            reasons.append(f'{len(threshold_violations)} parameter violations')
+        elif len(threshold_violations) >= 2:
+            adjusted += 4
+            reasons.append(f'{len(threshold_violations)} parameter violations')
 
-        if symptom_matches >= 2:
+        if symptom_matches >= 3:
             adjusted += 6
-            reasons.append(f'{symptom_matches} symptom matches')
-        # Apply percentile-based flags (dataset-driven) if available
+            reasons.append(f'{symptom_matches} symptoms match disease profile')
+        elif symptom_matches >= 2:
+            adjusted += 3
+            reasons.append(f'{symptom_matches} symptoms match disease profile')
+        
+        # Apply percentile-based flags for outlier detection
+        # This helps identify extreme values beyond clinical thresholds
         pct_map = self.percentile_map.get(disease_type, {})
+        percentile_count = 0
+        
         for param, raw_val in test_data.items():
             try:
                 val = float(raw_val)
@@ -374,73 +559,86 @@ class PredictionEngine:
 
             p95 = field_pct.get('p95')
             p90 = field_pct.get('p90')
-            p75 = field_pct.get('p75')
 
-            # apply slightly smaller percentile bumps for heart to reduce sensitivity
-            if disease_type == 'heart':
-                if p95 is not None and val >= p95:
-                    adjusted += 12
-                    strong_flags += 1
-                    reasons.append(f'{param} >= 95th pct ({val} >= {round(p95,2)})')
-                elif p90 is not None and val >= p90:
-                    adjusted += 8
-                    reasons.append(f'{param} >= 90th pct ({val} >= {round(p90,2)})')
-                elif p75 is not None and val >= p75:
-                    adjusted += 3
-                    reasons.append(f'{param} >= 75th pct ({val} >= {round(p75,2)})')
-            else:
-                if p95 is not None and val >= p95:
-                    adjusted += 20
-                    strong_flags += 1
-                    reasons.append(f'{param} >= 95th pct ({val} >= {round(p95,2)})')
-                elif p90 is not None and val >= p90:
-                    adjusted += 12
-                    reasons.append(f'{param} >= 90th pct ({val} >= {round(p90,2)})')
-                elif p75 is not None and val >= p75:
-                    adjusted += 4
-                    reasons.append(f'{param} >= 75th pct ({val} >= {round(p75,2)})')
+            # Only use extreme percentiles (95th) for strong outliers
+            if p95 is not None and val >= p95:
+                percentile_count += 1
+                if percentile_count <= 2:  # Don't double-count too much
+                    adjusted += 5
+                    reasons.append(f'{param}={val:.1f} (>95th percentile)')
 
         # If rules fail, keep adjusted as risk_score (no outer try/except)
 
         # Normalize adjusted score to 0-100
         adjusted_score = max(0.0, min(100.0, adjusted))
+        
+        # Additional cap: if no threshold violations and no symptoms, cap at 75%
+        if len(threshold_violations) == 0 and symptom_matches == 0:
+            adjusted_score = min(75.0, adjusted_score)
 
         # Map to label (conservative: require multiple strong flags for High)
         if adjusted_score >= 60:
             if strong_flags >= 2:
                 label = 'High'
-            else:
+        # Normalize adjusted score to 0-100
+        adjusted_score = max(0.0, min(100.0, adjusted))
+
+        # Map to label based on MODEL PREDICTION (trust the model)
+        if model_prediction == 1:
+            # Model says High Risk - respect it
+            if adjusted_score >= 70 or strong_flags >= 2:
+                label = 'High'
+            elif adjusted_score >= 50:
                 label = 'Moderate'
-        elif adjusted_score >= 40:
-            label = 'Moderate'
+            else:
+                label = 'Moderate'  # Model says risk, so at least Moderate
         else:
-            label = 'Low'
+            # Model says Low Risk
+            if adjusted_score >= 60:
+                label = 'Moderate'  # Clinical flags suggest caution
+            else:
+                label = 'Low'
 
         reason_text = '; '.join(reasons) if reasons else 'No specific clinical flags.'
         return label, reason_text, adjusted_score
     
     def _apply_decision_tree(self, test_data, disease_type):
-        """Apply decision tree rules."""
-        # Sample decision rules based on disease type
-        if disease_type == 'diabetes':
-            glucose = test_data.get('glucose', 0)
-            bmi = test_data.get('bmi', 0)
-            
-            if glucose > 200 or bmi > 35:
-                return {'risk_boost': 25, 'rule': 'high_glucose_or_bmi'}
-            elif glucose > 140 or bmi > 30:
-                return {'risk_boost': 15, 'rule': 'moderate_glucose_or_bmi'}
+        """Apply C++ trained decision tree model with calibrated risk scoring."""
+        # Use the loaded C++ model if available
+        if disease_type in self.models:
+            try:
+                # Get disease config to build features in correct order
+                config = get_disease_config(disease_type)
+                if config and 'fields' in config:
+                    features = []
+                    for field in config['fields']:
+                        field_name = field['name']
+                        value = test_data.get(field_name, field.get('default', 0))
+                        try:
+                            features.append(float(value))
+                        except:
+                            features.append(0.0)
+                    
+                    # Use C++ decision tree prediction
+                    prediction = self.models[disease_type].predict(features)
+                    
+                    # Map prediction to risk boost - calibrated per disease
+                    # prediction 0 = low risk, 1 = high risk
+                    if prediction == 1:
+                        # Calibrated risk boost based on dataset characteristics
+                        # Diabetes: 35% positive rate -> moderate boost
+                        # Heart: 55% positive rate -> higher boost  
+                        # Breast Cancer: varies by features -> moderate boost
+                        risk_boosts = {'diabetes': 40, 'heart': 45, 'breast_cancer': 42}
+                        boost = risk_boosts.get(disease_type, 40)
+                        return {'risk_boost': boost, 'rule': 'cpp_tree_high_risk', 'model': 'C++ DecisionTree', 'confidence': 0.85}
+                    else:
+                        return {'risk_boost': 5, 'rule': 'cpp_tree_low_risk', 'model': 'C++ DecisionTree', 'confidence': 0.85}
+            except Exception as e:
+                raise RuntimeError(f"Error applying C++ decision tree for {disease_type}: {e}")
         
-        elif disease_type == 'heart':
-            age = test_data.get('age', 0)
-            cholesterol = test_data.get('chol', 0)
-            
-            if age > 60 and cholesterol > 240:
-                return {'risk_boost': 30, 'rule': 'high_age_and_chol'}
-            elif cholesterol > 240:
-                return {'risk_boost': 20, 'rule': 'high_cholesterol'}
-        
-        return None
+        # Model must exist - no fallback
+        raise RuntimeError(f"C++ model not loaded for {disease_type}")
     
     def predict(self, test_data, symptoms, disease_type):
         """
@@ -466,11 +664,8 @@ class PredictionEngine:
                         features.append(float(val))
                     except Exception:
                         features.append(val)
-            else:
-                # Fallback: use values from test_data
-                features = list(test_data.values())
-        except Exception:
-            features = list(test_data.values())
+        except Exception as e:
+            raise RuntimeError(f"Error building features list: {e}")
 
         # Attach a human-friendly remark based on disease-specific heuristics
         try:
@@ -593,21 +788,13 @@ class PredictionEngine:
         disease_scores: List of tuples [(disease_name, score), ...]
         Returns: Sorted list by score (descending)
         """
-        if not CPP_AVAILABLE or MedicalSorting is None:
-            # Fallback to Python sorting
-            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+        # Convert to format expected by C++ sorter
+        score_pairs = [(disease, float(score)) for disease, score in disease_scores]
         
-        try:
-            # Convert to format expected by C++ sorter
-            score_pairs = [(disease, float(score)) for disease, score in disease_scores]
-            
-            # Use C++ QuickSort for performance
-            sorted_scores = MedicalSorting.quick_sort_by_score(score_pairs, descending=True)
-            
-            return sorted_scores
-        except Exception as e:
-            print(f"Error in DSA sorting: {e}")
-            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+        # Use C++ QuickSort for performance
+        sorted_scores = MedicalSorting.quick_sort_by_score(score_pairs, descending=True)
+        
+        return sorted_scores
     
     def calculate_composite_risk(self, disease_scores, symptom_weight=0.4, 
                                 frequency_weight=0.3, comorbidity_weight=0.2, 
@@ -616,10 +803,6 @@ class PredictionEngine:
         Calculate composite risk score using C++ RiskScorer.
         Applies multiple factors to rank diseases more accurately.
         """
-        if not CPP_AVAILABLE or RiskScorer is None or RiskFactors is None:
-            # Fallback: simple weighted average
-            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
-        
         try:
             # Create risk factors
             factors = RiskFactors()
@@ -636,16 +819,13 @@ class PredictionEngine:
             
             return ranked
         except Exception as e:
-            print(f"Error in composite risk calculation: {e}")
-            return sorted(disease_scores, key=lambda x: x[1], reverse=True)
+            raise RuntimeError(f"Error in composite risk calculation: {e}")
     
     def extract_symptoms_from_db(self):
         """
         Extract all symptoms from database and load into C++ SymptomManager.
         Used for fast symptom lookup and autocomplete.
         """
-        if not CPP_AVAILABLE or SymptomManager is None:
-            return None
         
         try:
             from database.db_connection import get_db_connection
@@ -677,16 +857,9 @@ class PredictionEngine:
         """
         Fast symptom search using DSA binary search.
         """
-        if not CPP_AVAILABLE:
-            return []
-        
-        try:
-            sym_manager = self.extract_symptoms_from_db()
-            if sym_manager:
-                results = sym_manager.search_by_prefix(prefix)
-                return results
-        except Exception as e:
-            print(f"Error in symptom search: {e}")
-        
+        sym_manager = self.extract_symptoms_from_db()
+        if sym_manager:
+            results = sym_manager.search_by_prefix(prefix)
+            return results
         return []
 

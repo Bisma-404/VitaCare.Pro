@@ -36,6 +36,38 @@
             padding: 20px;
         }
 
+        .nav-bar {
+            width: 100vw;
+            background: var(--nav-bg);
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            box-shadow: var(--shadow);
+            padding: 18px 0;
+            text-align: center;
+            font-size: 1.32em;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .nav-links {
+            position: absolute;
+            top: 8px;
+            left: 18px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
         .card {
             background: var(--bg-card);
             padding: 40px;
@@ -60,6 +92,23 @@
         .header p {
             color: var(--text-muted);
             margin-top: 10px;
+        }
+
+        .patient-selection-banner {
+            background: rgba(8, 217, 214, 0.1);
+            border-left: 4px solid var(--accent);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .patient-selection-banner p {
+            margin: 0 0 10px 0;
+            color: var(--text-muted);
+        }
+
+        .patient-selection-banner strong {
+            color: var(--accent);
         }
 
         .input-method-tabs {
@@ -195,62 +244,155 @@
         }
 
         .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav-bar">
+        <div class="nav-links">
+            <a href="{{ url_for('staff.disease_selection') }}">← Back</a>
+        </div>
+        🩺 Disease Detection
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>{{ disease_name }} Prediction</h1>
+                <p>Enter patient data manually or upload a medical report</p>
+            </div>
+
+            <div class="patient-selection-banner">
+                <p><strong>ℹ️ Patient Assignment (Optional):</strong></p>
+                <p>Select a patient to save this prediction to their medical records, or leave unselected for a quick check without saving.</p>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="predictionForm">
+                <!-- Patient Selection -->
+                <div class="form-group">
+                    <label for="patient_id">👤 Assign to Patient (Optional)</label>
+                    <select name="patient_id" id="patient_id">
+                        <option value="">-- Quick Check (Don't Save) --</option>
+                        {% for patient in patients %}
+                        <option value="{{ patient.id }}">{{ patient.username }} - {{ patient.email or 'No Email' }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <hr style="border: none; border-top: 2px solid var(--border); margin: 25px 0;">
+
+                <div class="input-method-tabs">
+                    <button type="button" class="tab-btn active" onclick="switchTab('manual')">✍️ Manual Input</button>
+                    <button type="button" class="tab-btn" onclick="switchTab('ocr')">📄 Upload Report (OCR)</button>
+                </div>
+
+                <!-- Manual Input Tab -->
+                <div id="manual-tab" class="tab-content active">
+                    <div class="form-grid">
+                        {% for field in fields %}
+                        <div class="form-group">
+                            <label for="{{ field.name }}">{{ field.label }}</label>
+                            {% if field.type == 'select' %}
+                            <select name="{{ field.name }}" id="{{ field.name }}" required>
+                                {% for val, label in field.options %}
+                                <option value="{{ val }}" {% if val==field.default %}selected{% endif %}>{{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <input type="number" step="{{ field.step|default('any') }}" name="{{ field.name }}"
+                                id="{{ field.name }}" value="{{ field.default }}" required>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="symptoms_text">Additional Symptoms (Optional)</label>
+                        <textarea name="symptoms_text" id="symptoms_text" rows="3" 
+                                  placeholder="e.g., chest pain, fatigue, blurred vision"></textarea>
+                    </div>
+                </div>
+
+                <!-- OCR Upload Tab -->
+                <div id="ocr-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>Upload Medical Report</label>
+                        <div class="file-upload-area" onclick="document.getElementById('report_file').click()">
+                            <div class="upload-icon">📄</div>
+                            <p style="color: var(--text-muted); margin: 10px 0;">
+                                Click to upload or drag and drop<br>
+                                <small>Supports: PDF, PNG, JPG, CSV</small>
+                            </p>
+                            <input type="file" name="report_file" id="report_file" class="file-input" 
+                                   accept=".pdf,.png,.jpg,.jpeg,.csv" onchange="handleFileSelect(this)">
+                            <div id="file-info" class="file-info" style="display: none;"></div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="disease_type" value="{{ disease_type }}">
+                </div>
+
+                <button type="submit">🔬 Run Prediction</button>
+            </form>
+
+            <a href="{{ url_for('staff.disease_selection') }}" class="back-link">← Back to Disease Selection</a>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
             // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content=> content.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             document.getElementById(tab + '-tab').classList.add('active');
 
             // Clear file input when switching to manual
-            if (tab==='manual') {
-                document.getElementById('report_file').value='';
-                document.getElementById('file-info').style.display='none';
+            if (tab === 'manual') {
+                document.getElementById('report_file').value = '';
+                document.getElementById('file-info').style.display = 'none';
             }
         }
 
         function handleFileSelect(input) {
-            const file=input.files[0];
-            const fileInfo=document.getElementById('file-info');
-
+            const file = input.files[0];
+            const fileInfo = document.getElementById('file-info');
             if (file) {
-                fileInfo.style.display='block';
-
-                fileInfo.innerHTML=` <strong>Selected:</strong>$ {
-                    file.name
-                }
-
-                <br><small>Size: $ {
-                    (file.size / 1024).toFixed(2)
-                }
-
-                KB</small>`;
-            }
-
-            else {
-                fileInfo.style.display='none';
+                fileInfo.style.display = 'block';
+                fileInfo.innerHTML = `
+                    <strong>Selected:</strong> ${file.name}<br>
+                    <small>Size: ${(file.size / 1024).toFixed(2)} KB</small>
+                `;
+            } else {
+                fileInfo.style.display = 'none';
             }
         }
 
         // Drag and drop functionality
-        const uploadArea=document.querySelector('.file-upload-area');
+        const uploadArea = document.querySelector('.file-upload-area');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
-        uploadArea.addEventListener('dragover', (e)=> {
-                e.preventDefault();
-                uploadArea.classList.add('dragover');
-            });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
 
-        uploadArea.addEventListener('dragleave', ()=> {
-                uploadArea.classList.remove('dragover');
-            });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                document.getElementById('report_file').files = e.dataTransfer.files;
+                handleFileSelect(document.getElementById('report_file'));
+            }
+        });
+    </script>
+</body>
 
-        uploadArea.addEventListener('drop', (e)=> {
-                e.preventDefault();
-                uploadArea.classList.remove('dragover');
-                const file=e.dataTransfer.files[0];
-
-                if (file) {
-                    document.getElementById('report_file').files=e.dataTransfer.files;
-                    handleFileSelect(document.getElementById('report_file'));
-                }
-            });
-        </script></body></html>
+</html>

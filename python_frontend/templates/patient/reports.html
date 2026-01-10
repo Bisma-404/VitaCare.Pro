@@ -273,12 +273,23 @@
                         </td>
                         <td>
                             {% if report.max_risk_score %}
-                            {% if report.max_risk_score >= 70 %}
-                            <span class="badge badge-danger">🔴 High Risk</span>
-                            {% elif report.max_risk_score >= 40 %}
-                            <span class="badge badge-warning">🟡 Medium Risk</span>
+                            {% set severity = (report.max_severity_label or '')|lower %}
+                            {% if severity %}
+                                {% if 'high' in severity or 'critical' in severity %}
+                                <span class="badge badge-danger">🔴 High Risk</span>
+                                {% elif 'moderate' in severity or 'medium' in severity %}
+                                <span class="badge badge-warning">🟡 Medium Risk</span>
+                                {% else %}
+                                <span class="badge badge-success">🟢 Low Risk</span>
+                                {% endif %}
                             {% else %}
-                            <span class="badge badge-success">🟢 Low Risk</span>
+                                {% if report.max_risk_score >= 70 %}
+                                <span class="badge badge-danger">🔴 High Risk</span>
+                                {% elif report.max_risk_score >= 40 %}
+                                <span class="badge badge-warning">🟡 Medium Risk</span>
+                                {% else %}
+                                <span class="badge badge-success">🟢 Low Risk</span>
+                                {% endif %}
                             {% endif %}
                             {% else %}
                             <span class="badge badge-info"

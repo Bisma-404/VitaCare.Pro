@@ -87,12 +87,17 @@ def view_reports():
         predictions = PredictionDAO.get_predictions_by_report(report['id'])
         report['prediction_count'] = len(predictions)
         
-        # Calculate max risk score from predictions (prioritize risk_score)
+        # Calculate max risk score and severity from predictions
         if predictions:
             max_risk = max([p.get('risk_score') or p.get('confidence_score', 0) for p in predictions])
             report['max_risk_score'] = max_risk
+            
+            # Get the severity_label from the prediction with highest risk
+            max_pred = max(predictions, key=lambda p: p.get('risk_score') or p.get('confidence_score', 0))
+            report['max_severity_label'] = max_pred.get('severity_label', '')
         else:
             report['max_risk_score'] = None
+            report['max_severity_label'] = None
     
     return render_template('patient/reports.html', reports=reports)
 
@@ -276,10 +281,30 @@ def medical_summary():
     # Get all predictions
     predictions = PredictionDAO.get_predictions_by_patient(patient_id)
     
-    # Calculate statistics
-    high_risk_count = len([p for p in predictions if (p.get('risk_score') or p.get('confidence_score', 0)) >= 70])
-    medium_risk_count = len([p for p in predictions if 40 <= (p.get('risk_score') or p.get('confidence_score', 0)) < 70])
-    low_risk_count = len([p for p in predictions if (p.get('risk_score') or p.get('confidence_score', 0)) < 40])
+    # Calculate statistics using severity_label (primary) or risk_score (fallback)
+    high_risk_count = 0
+    medium_risk_count = 0
+    low_risk_count = 0
+    
+    for p in predictions:
+        severity = (p.get('severity_label') or '').lower()
+        if severity:
+            # Use severity_label if available
+            if 'high' in severity or 'critical' in severity:
+                high_risk_count += 1
+            elif 'moderate' in severity or 'medium' in severity:
+                medium_risk_count += 1
+            else:
+                low_risk_count += 1
+        else:
+            # Fallback to risk_score
+            risk_score = p.get('risk_score') or p.get('confidence_score', 0)
+            if risk_score >= 70:
+                high_risk_count += 1
+            elif risk_score >= 40:
+                medium_risk_count += 1
+            else:
+                low_risk_count += 1
     
     statistics = {
         'total_reports': len(reports),

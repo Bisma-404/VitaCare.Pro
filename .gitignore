@@ -6,36 +6,65 @@ __pycache__/
 *.egg
 *.egg-info/
 dist/
-build/
 *.whl
 .Python
 env/
 venv/
 ENV/
 .venv
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Flask
 instance/
 .webassets-cache
 *.db
+*.sqlite
+*.sqlite3
 
-# OCR Upload folder (temporary files)
-python_frontend/webapp/uploads/*
-!python_frontend/webapp/uploads/.gitkeep
+# Uploads folder (keep structure, ignore content)
+python_frontend/uploads/*
+!python_frontend/uploads/.gitkeep
 
-# Test images (optional - uncomment if you don't want to track test images)
-# python_frontend/webapp/test_images/
+# Utility/Debug Scripts (not for production)
+python_frontend/fix_admin.py
+python_frontend/truncate_db.py
+python_frontend/test_*.py
+*_test.py
 
-# CMake
-build/
+# CMake Build Files
+cpp_core/build/*
+!cpp_core/build/Release/
+cpp_core/build/Release/*.exp
+cpp_core/build/Release/*.lib
+cpp_core/build/Release/*.pdb
+cpp_core/build/Release/decision_tree_lib.lib
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
+install_manifest.txt
 *.cmake
 !CMakeLists.txt
 
-# C++
+# Visual Studio / MSBuild
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+x64/
+x86/
+Debug/
+Release/
+[Bb]in/
+[Oo]bj/
+
+# C++ Compiled Files
 *.o
 *.obj
 *.out
@@ -45,9 +74,14 @@ Makefile
 *.dylib
 *.lib
 *.a
+*.exp
+*.pdb
+*.ilk
 
-# Compiled Python extensions
-*.pyd
+# Compiled Python Module (track only in python_frontend root)
+python_frontend/cpp_tree.cp3*.pyd
+# But ignore in build directory
+cpp_core/build/**/*.pyd
 
 # IDEs
 .vscode/
@@ -57,16 +91,14 @@ Makefile
 *~
 .DS_Store
 
-# Models (if you want to track trained models, remove these lines)
-# python_frontend/models/*.txt
-# python_frontend/models/*.pkl
-
 # Logs
 *.log
+logs/
 
 # Environment
 .env
 .env.local
+.env.production
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
@@ -75,3 +107,14 @@ Makefile
 # System files
 Thumbs.db
 desktop.ini
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+schema_output.txt
+
+# Documentation (we'll recreate)
+PROJECT_REPORT.md

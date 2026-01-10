@@ -58,17 +58,13 @@ def load_model(disease_type):
     model_path = os.path.normpath(model_path)
     
     if not os.path.exists(model_path):
-        return None
+        raise FileNotFoundError(f"C++ model not found: {model_path}. Please run train.py to train the model.")
     
-    try:
-        model = cpp_tree.DecisionTree()
-        loaded = model.load(model_path)
-        if not loaded:
-            return None
-        return model
-    except Exception as e:
-        print(f"Error loading model ({model_path}): {e}")
-        return None
+    model = cpp_tree.DecisionTree()
+    if not model.load(model_path):
+        raise RuntimeError(f"Failed to load C++ model from {model_path}")
+    
+    return model
 
 
 def extract_all_parameters_from_text(text, disease_types):
@@ -206,68 +202,59 @@ def run_all_disease_models(all_params, symptoms_list):
     """Run all disease models and return a list of result dictionaries.
 
     Each result contains prediction, risk score, risk level, and related metadata.
+    Uses the same prediction engine as separate disease predictions for consistency.
     """
     results = []
     disease_types = ['diabetes', 'heart', 'breast_cancer']
+    
+    # Import prediction engine for consistent predictions
+    from predictions.prediction_engine import PredictionEngine
+    engine = PredictionEngine()
 
     for disease_type in disease_types:
         try:
-            # Load the trained model for this disease
-            model = load_model(disease_type)
-            if model is None:
-                continue
-
-            # Retrieve disease configuration (fields, outcome labels, etc.)
+            # Retrieve disease configuration
             config = get_disease_config(disease_type)
             if not config:
                 continue
 
-            # Build feature vector for the model
-            features = []
+            # Build disease-specific parameters using only relevant fields
+            # This ensures each disease gets correct parameters with its own defaults
+            disease_params = {}
             defaults = get_default_values(disease_type)
+            
             for field in config['fields']:
                 field_name = field['name']
-                # Prefer explicit parameter, fall back to normalized name, then defaults
-                value = all_params.get(field_name)
-                if value is None:
+                # Check if parameter was provided in all_params
+                if field_name in all_params:
+                    disease_params[field_name] = all_params[field_name]
+                else:
+                    # Try normalized name
                     normalized = normalize_parameter_name(field_name)
-                    value = all_params.get(normalized)
-                if value is None:
-                    value = defaults.get(field_name, field.get('default', 0))
-                features.append(float(value))
-
-            # Make prediction using the model
-            prediction = model.predict(features)
+                    if normalized in all_params:
+                        disease_params[field_name] = all_params[normalized]
+                    else:
+                        # Use disease-specific default
+                        disease_params[field_name] = defaults.get(field_name, field.get('default', 0))
+            
+            # Use the same prediction engine as separate predictions
+            dsa_result = engine.predict(disease_params, symptoms_list, disease_type)
+            
+            if not dsa_result:
+                continue
+            
+            # Extract prediction data
+            prediction = dsa_result.get('prediction', 0)
             outcome_label = config['outcome_labels'].get(prediction, 'Unknown')
-
-            # Determine if any provided symptom matches this disease
-            symptom_match = any(
-                disease_type in get_diseases_for_symptom(symptom) for symptom in symptoms_list
-            )
-
-            # Detect abnormal parameter values
-            abnormal_values = False
-            for idx, field in enumerate(config['fields']):
-                field_name = field['name']
-                val = features[idx]
-                is_normal, _ = is_parameter_normal(field_name, val)
-                if is_normal is False:
-                    abnormal_values = True
-                    break
-
-            # Compute risk score using the shared utility
-            confidence_factors = {
-                'symptom_match': symptom_match,
-                'abnormal_values': abnormal_values,
-                'trend_worsening': False  # Updated later based on trend analysis
-            }
-            risk_score = calculate_risk_score(prediction, confidence_factors)
-
-            # Map risk score to human‑readable level and emoji
-            if risk_score >= 50:
+            risk_score = dsa_result.get('risk_score', dsa_result.get('confidence', 0))
+            severity_label = dsa_result.get('severity_label', 'Low')
+            
+            # Map severity_label to risk level and emoji for consistency
+            severity_lower = severity_label.lower()
+            if 'high' in severity_lower or 'critical' in severity_lower:
                 risk_level = "CRITICAL"
                 risk_emoji = "🔴"
-            elif risk_score >= 30:
+            elif 'moderate' in severity_lower or 'medium' in severity_lower:
                 risk_level = "MEDIUM"
                 risk_emoji = "🟡"
             else:
@@ -282,13 +269,19 @@ def run_all_disease_models(all_params, symptoms_list):
                 'risk_score': risk_score,
                 'risk_level': risk_level,
                 'risk_emoji': risk_emoji,
-                'features': features,
-                'symptom_match': symptom_match,
-                'abnormal_values': abnormal_values,
+                'severity_label': severity_label,
+                'severity_reason': dsa_result.get('severity_reason', ''),
+                'threshold_violations': dsa_result.get('threshold_violations', []),
+                'symptom_matches': dsa_result.get('symptom_matches', 0),
+                'symptom_match': dsa_result.get('symptom_matches', 0) > 0,
+                'abnormal_values': len(dsa_result.get('threshold_violations', [])) > 0,
+                'method': dsa_result.get('method', 'DSA'),
                 'field_names': [f['label'] for f in config['fields']]
             })
         except Exception as e:
             print(f"Error running model for {disease_type}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     return results
 
@@ -360,18 +353,9 @@ def general_analysis():
                         except:
                             pass
             
-            # Merge with defaults for missing parameters
-            all_params = {}
-            disease_types = ['diabetes', 'heart', 'breast_cancer']
-            
-            for disease_type in disease_types:
-                defaults = get_default_values(disease_type)
-                for key, value in defaults.items():
-                    if key not in all_params:
-                        all_params[key] = value
-            
-            # Override with extracted parameters
-            all_params.update(extracted_params)
+            # Start with extracted parameters only (no default merging across diseases)
+            # Each disease will use its own defaults in run_all_disease_models
+            all_params = extracted_params.copy()
             
             # Override with manual entry (if provided)
             manual_fields = ['age', 'glucose', 'blood_pressure', 'bmi', 'chol', 'trestbps', 'thalach']

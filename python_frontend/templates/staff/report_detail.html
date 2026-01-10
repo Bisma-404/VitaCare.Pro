@@ -370,19 +370,40 @@
             <h2>🔮 Analysis Results (Disease Predictions)</h2>
             {% for prediction in predictions %}
             {% set risk_score = (prediction.risk_score or prediction.confidence_score or 0)|float %}
-            <div class="prediction-card" style="border-left: 4px solid {% if risk_score >= 70 %}var(--danger){% elif risk_score >= 40 %}var(--warning){% else %}var(--success){% endif %};">
+            {% set backend_severity = (prediction.severity_label or '')|lower %}
+            {% set risk_level = 'low' %}
+            {% set risk_color = 'var(--success)' %}
+            {% set risk_badge = '🟢 Low Risk' %}
+            {% if backend_severity %}
+                {% if 'high' in backend_severity or 'critical' in backend_severity %}
+                    {% set risk_level = 'high' %}
+                    {% set risk_color = 'var(--danger)' %}
+                    {% set risk_badge = '🔴 High Risk' %}
+                {% elif 'moderate' in backend_severity or 'medium' in backend_severity %}
+                    {% set risk_level = 'medium' %}
+                    {% set risk_color = 'var(--warning)' %}
+                    {% set risk_badge = '🟡 Medium Risk' %}
+                {% endif %}
+            {% else %}
+                {% if risk_score >= 70 %}
+                    {% set risk_level = 'high' %}
+                    {% set risk_color = 'var(--danger)' %}
+                    {% set risk_badge = '🔴 High Risk (≥70%)' %}
+                {% elif risk_score >= 40 %}
+                    {% set risk_level = 'medium' %}
+                    {% set risk_color = 'var(--warning)' %}
+                    {% set risk_badge = '🟡 Medium Risk (40-69%)' %}
+                {% else %}
+                    {% set risk_badge = '🟢 Low Risk (<40%)' %}
+                {% endif %}
+            {% endif %}
+            <div class="prediction-card" style="border-left: 4px solid {{ risk_color }};">
                 <h3>{{ prediction.disease_name if prediction.disease_name else 'Disease Prediction' }}</h3>
                 <div class="info-grid" style="margin-top: 15px;">
                     <div class="info-item">
                         <div class="info-label">Risk Assessment</div>
                         <div class="info-value">
-                            {% if risk_score >= 70 %}
-                            <span class="status-indicator status-danger">🔴 High Risk (≥70%)</span>
-                            {% elif risk_score >= 40 %}
-                            <span class="status-indicator status-warning">🟡 Medium Risk (40-69%)</span>
-                            {% else %}
-                            <span class="status-indicator status-normal">🟢 Low Risk (<40%)</span>
-                            {% endif %}
+                            <span class="status-indicator status-{{ risk_level }}">{{ risk_badge }}</span>
                         </div>
                     </div>
                     <div class="info-item">
@@ -395,7 +416,7 @@
                     </div>
                     <div class="info-item">
                         <div class="info-label">Analysis Method</div>
-                        <div class="info-value">{{ prediction.method if prediction.method else 'C++ Decision Tree (DSA)' }}</div>
+                        <div class="info-value">{{ prediction.method if prediction.method else 'Machine Learning' }}</div>
                     </div>
                 </div>
                 

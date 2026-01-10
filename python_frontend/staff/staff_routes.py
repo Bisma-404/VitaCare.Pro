@@ -324,6 +324,17 @@ def run_prediction(report_id):
     test_data = {test['test_name']: test['test_value'] for test in tests}
     
     if request.method == 'POST':
+        # Update test_data with edited values from form
+        form_data = request.form.to_dict()
+        for key, value in form_data.items():
+            # Skip non-data fields
+            if key in ['prediction_type', 'symptoms_text']:
+                continue
+            try:
+                test_data[key] = float(value)
+            except (ValueError, TypeError):
+                pass
+        
         # Get symptoms
         symptoms = request.form.getlist('symptoms')
         symptoms_text = request.form.get('symptoms_text', '')
@@ -337,82 +348,88 @@ def run_prediction(report_id):
         predictions = []
         
         if prediction_type == 'all':
-            # Predict all diseases using C++ models (like Version 4)
-            results = _run_all_disease_models_cpp(test_data, symptoms)
+            # Predict all diseases using PredictionEngine for consistency
+            disease_types = ['diabetes', 'heart', 'breast_cancer']
             
-            for result in results:
-                # Get disease ID from name
-                disease_id = _get_disease_id(result['disease_type'])
-                
-                if disease_id:
-                    prediction_id = PredictionDAO.create_prediction(
-                        report_id=report_id,
-                        disease_id=disease_id,
-                        prediction_result=result['prediction'],
-                        confidence_score=result.get('confidence', result.get('risk_score', 50)),
-                        method=result.get('method', 'C++ Decision Tree'),
-                        show_in_patient_panel=True,  # Automatically show doctor predictions in patient panel
-                        risk_score=result.get('risk_score'),
-                        severity_label=result.get('severity_label', 'Unknown'),
-                        severity_reason=result.get('severity_reason', ''),
-                        threshold_violations=result.get('threshold_violations', []),
-                        symptom_matches=result.get('symptom_matches', 0)
-                    )
-                    predictions.append(result)
-        else:
-            # Predict specific disease using C++ model
-            model = _load_cpp_model(prediction_type)
-            if model:
-                config = get_disease_config(prediction_type)
-                if config:
-                    defaults = get_default_values(prediction_type)
-                    features = []
-                    from utils.medical_mappings import parameter_aliases
-
-                    def _resolve_test_value(td, fname):
-                        if fname in td:
-                            return td[fname]
-                        n = normalize_parameter_name(fname)
-                        if n in td:
-                            return td[n]
-                        for alias, standard in parameter_aliases.items():
-                            if standard == fname:
-                                a_norm = normalize_parameter_name(alias)
-                                if a_norm in td:
-                                    return td[a_norm]
-                                if alias in td:
-                                    return td[alias]
-                        return defaults.get(fname, field.get('default', 0))
-
-                    for field in config['fields']:
-                        field_name = field['name']
-                        value = _resolve_test_value(test_data, field_name)
-                        try:
-                            features.append(float(value))
-                        except Exception:
-                            features.append(float(defaults.get(field_name, field.get('default', 0))))
+            for disease_type in disease_types:
+                try:
+                    # Use PredictionEngine.predict for each disease
+                    result = prediction_engine.predict(test_data, symptoms, disease_type)
                     
-                    prediction = model.predict(features)
-                    outcome_label = config['outcome_labels'].get(prediction, 'Unknown')
+                    if not result:
+                        continue
                     
-                    disease_id = _get_disease_id(prediction_type)
+                    # Get disease config for metadata
+                    config = get_disease_config(disease_type)
+                    if not config:
+                        continue
+                    
+                    # Get disease ID from name
+                    disease_id = _get_disease_id(disease_type)
+                    
                     if disease_id:
-                        PredictionDAO.create_prediction(
+                        prediction_id = PredictionDAO.create_prediction(
                             report_id=report_id,
                             disease_id=disease_id,
-                            prediction_result=prediction,
-                            confidence_score=75.0,  # Default confidence
-                            method='C++ Decision Tree',
-                            show_in_patient_panel=True  # Automatically show doctor predictions in patient panel
+                            prediction_result=result.get('prediction', 0),
+                            confidence_score=result.get('confidence', result.get('risk_score', 50)),
+                            method=result.get('method', 'Machine Learning'),
+                            show_in_patient_panel=True,  # Automatically show doctor predictions in patient panel
+                            risk_score=result.get('risk_score', result.get('adjusted_score', 0)),
+                            severity_label=result.get('severity_label', 'Unknown'),
+                            severity_reason=result.get('severity_reason', ''),
+                            threshold_violations=result.get('threshold_violations', []),
+                            symptom_matches=result.get('symptom_matches', 0)
                         )
+                        
+                        # Add to predictions list for display
                         predictions.append({
-                            'disease_type': prediction_type,
+                            'disease_type': disease_type,
                             'disease_name': config['name'],
-                            'prediction': prediction,
-                            'outcome': outcome_label,
-                            'confidence': 75.0,
-                            'method': 'C++ Decision Tree'
+                            **result
                         })
+                except Exception as e:
+                    print(f"Error predicting {disease_type}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
+        else:
+            # Predict specific disease using PredictionEngine for consistency
+            try:
+                result = prediction_engine.predict(test_data, symptoms, prediction_type)
+                
+                if result:
+                    # Get disease config for metadata
+                    config = get_disease_config(prediction_type)
+                    if config:
+                        # Get disease ID from name
+                        disease_id = _get_disease_id(prediction_type)
+                        
+                        if disease_id:
+                            prediction_id = PredictionDAO.create_prediction(
+                                report_id=report_id,
+                                disease_id=disease_id,
+                                prediction_result=result.get('prediction', 0),
+                                confidence_score=result.get('confidence', result.get('risk_score', 50)),
+                                method=result.get('method', 'Machine Learning'),
+                                show_in_patient_panel=True,  # Automatically show doctor predictions in patient panel
+                                risk_score=result.get('risk_score', result.get('adjusted_score', 0)),
+                                severity_label=result.get('severity_label', 'Unknown'),
+                                severity_reason=result.get('severity_reason', ''),
+                                threshold_violations=result.get('threshold_violations', []),
+                                symptom_matches=result.get('symptom_matches', 0)
+                            )
+                            
+                            # Add to predictions list for display
+                            predictions.append({
+                                'disease_type': prediction_type,
+                                'disease_name': config['name'],
+                                **result
+                            })
+            except Exception as e:
+                print(f"Error predicting {prediction_type}: {e}")
+                import traceback
+                traceback.print_exc()
         
         flash(f'Predictions generated successfully', 'success')
         return render_template('staff/prediction_results.html',
@@ -420,41 +437,73 @@ def run_prediction(report_id):
                              predictions=predictions,
                              test_data=test_data)
     
-    # GET request - show prediction form
+    # GET request - if there are existing predictions for this report, show them
+    existing_predictions = PredictionDAO.get_predictions_by_report(report_id)
+    # Parse JSON threshold_violations and add outcome text
+    import json
+    for p in existing_predictions:
+        if p.get('threshold_violations'):
+            try:
+                p['threshold_violations'] = json.loads(p['threshold_violations'])
+            except Exception:
+                p['threshold_violations'] = []
+        else:
+            p['threshold_violations'] = []
+        
+        # Map prediction_result (0/1) to outcome text using disease config
+        disease_code = p.get('disease_name')  # Try disease_name first
+        # Try to find matching disease type
+        disease_type = None
+        for dt in ['diabetes', 'heart', 'breast_cancer']:
+            dt_config = DISEASE_CONFIG.get(dt)
+            if dt_config and dt_config['name'].lower() in str(disease_code).lower():
+                disease_type = dt
+                break
+        
+        if disease_type:
+            pred_config = DISEASE_CONFIG[disease_type]
+            prediction_result = p.get('prediction_result', 0)
+            p['outcome'] = pred_config['outcome_labels'].get(prediction_result, 'Unknown')
+            p['disease_type'] = disease_type
+        else:
+            # Fallback
+            prediction_result = p.get('prediction_result', 0)
+            p['outcome'] = 'High Risk' if prediction_result == 1 else 'Low Risk'
+
+    if existing_predictions:
+        return render_template('staff/prediction_results.html',
+                             report=report,
+                             predictions=existing_predictions,
+                             test_data=test_data)
+
+    # No existing predictions -> show prediction form
     return render_template('staff/run_prediction.html',
                          report=report,
                          test_data=test_data)
 
 
-def _get_disease_id(disease_name):
-    """Get disease ID from name."""
-    query = "SELECT id FROM disease_models WHERE disease_name = %s OR disease_code = %s"
-    result = DatabaseConnection.execute_query(query, (disease_name, disease_name))
+def _get_disease_id(disease_type):
+    """Get disease ID from disease type (diabetes, heart, breast_cancer)."""
+    query = "SELECT id FROM disease_models WHERE disease_code = %s"
+    result = DatabaseConnection.execute_query(query, (disease_type,))
     return result[0]['id'] if result else None
 
 
 def _load_cpp_model(disease_type):
-    """Load C++ model for disease type (like Version 4)."""
-    if cpp_tree is None:
-        return None
-    
+    """Load C++ model for disease type (required)."""
     script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     models_dir = os.path.join(script_dir, 'models')
     model_path = os.path.join(models_dir, f'{disease_type}_model.txt')
     model_path = os.path.normpath(model_path)
     
     if not os.path.exists(model_path):
-        return None
+        raise FileNotFoundError(f"C++ model not found: {model_path}. Please run train.py to train the model.")
     
-    try:
-        model = cpp_tree.DecisionTree()
-        loaded = model.load(model_path)
-        if not loaded:
-            return None
-        return model
-    except Exception as e:
-        print(f"Error loading model ({model_path}): {e}")
-        return None
+    model = cpp_tree.DecisionTree()
+    if not model.load(model_path):
+        raise RuntimeError(f"Failed to load C++ model from {model_path}")
+    
+    return model
 
 
 def _run_all_disease_models_cpp(test_data, symptoms_list):
@@ -820,7 +869,7 @@ def predict_disease(disease_type):
                             disease_id=disease_id,
                             prediction_result=int(result.get('prediction', 0)),
                             confidence_score=float(template_risk),
-                            method=result.get('method', 'DSA'),
+                            method=result.get('method', 'Machine Learning'),
                             show_in_patient_panel=True,
                             risk_score=template_risk,
                             severity_label=template_severity,
@@ -948,7 +997,7 @@ def ocr_review(disease_type):
                             disease_id=disease_id,
                             prediction_result=int(result.get('prediction', 0)),
                             confidence_score=float(template_risk),
-                            method=result.get('method', 'DSA'),
+                            method=result.get('method', 'Machine Learning'),
                             show_in_patient_panel=True,
                             risk_score=template_risk,
                             severity_label=template_severity,

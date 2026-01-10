@@ -169,17 +169,30 @@
             {% if predictions %}
                 {% for prediction in predictions %}
                 {% set risk_score = prediction.risk_score or prediction.confidence_score or 0 %}
+                {% set backend_severity = (prediction.severity_label or '')|lower %}
                 {% set risk_level = 'low' %}
                 {% set risk_emoji = '🟢' %}
                 {% set risk_label = 'Low Risk' %}
-                {% if risk_score >= 70 %}
-                    {% set risk_level = 'critical' %}
-                    {% set risk_emoji = '🔴' %}
-                    {% set risk_label = 'High Risk' %}
-                {% elif risk_score >= 40 %}
-                    {% set risk_level = 'medium' %}
-                    {% set risk_emoji = '🟡' %}
-                    {% set risk_label = 'Medium Risk' %}
+                {% if backend_severity %}
+                    {% if 'high' in backend_severity or 'critical' in backend_severity %}
+                        {% set risk_level = 'critical' %}
+                        {% set risk_emoji = '🔴' %}
+                        {% set risk_label = 'High Risk' %}
+                    {% elif 'moderate' in backend_severity or 'medium' in backend_severity %}
+                        {% set risk_level = 'medium' %}
+                        {% set risk_emoji = '🟡' %}
+                        {% set risk_label = 'Medium Risk' %}
+                    {% endif %}
+                {% else %}
+                    {% if risk_score >= 70 %}
+                        {% set risk_level = 'critical' %}
+                        {% set risk_emoji = '🔴' %}
+                        {% set risk_label = 'High Risk' %}
+                    {% elif risk_score >= 40 %}
+                        {% set risk_level = 'medium' %}
+                        {% set risk_emoji = '🟡' %}
+                        {% set risk_label = 'Medium Risk' %}
+                    {% endif %}
                 {% endif %}
                 <div class="prediction-card {{ risk_level }}">
                     <h3>{{ prediction.disease_name if prediction.disease_name else 'Unknown Disease' }}</h3>
@@ -219,7 +232,6 @@
                     <p><strong>Severity:</strong> {{ prediction.severity_label }}</p>
                     {% endif %}
                     <p><strong>Report Date:</strong> {{ prediction.report_date.strftime('%Y-%m-%d %H:%M') if prediction.report_date else 'N/A' }}</p>
-                    <p><strong>Method:</strong> {{ prediction.method if prediction.method else 'C++ Decision Tree' }}</p>
                     <p><strong>Report ID:</strong> #{{ prediction.report_id }}</p>
                 </div>
                 {% endfor %}
