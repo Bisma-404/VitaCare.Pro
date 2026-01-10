@@ -5,9 +5,149 @@
 [![C++](https://img.shields.io/badge/C%2B%2B-17-orange)](https://isocpp.org/)
 [![Accuracy](https://img.shields.io/badge/Accuracy-98%25+-brightgreen)](https://github.com/abdulrafay1402/VitaCare.Pro)
 
-An intelligent hospital management system combining C++ DSA implementations with machine learning for accurate disease prediction. Achieves 98%+ accuracy across diabetes, heart disease, and breast cancer detection.
+Intelligent hospital management system combining custom C++ DSA implementations with ML for disease prediction. Achieves 98%+ accuracy on diabetes, heart disease, and breast cancer detection.
 
 **Repository:** [github.com/abdulrafay1402/VitaCare.Pro](https://github.com/abdulrafay1402/VitaCare.Pro)
+
+---
+
+## 🎯 Overview
+
+- **Custom C++ DSA Engine** - HashMap, Decision Trees, Priority Queues, Graphs
+- **ML-Powered Predictions** - 98%+ accuracy with entropy-based decision trees
+- **Clinical Integration** - ADA, ACC/AHA, WDBC medical guidelines
+- **Full-Stack Web App** - Flask backend, responsive UI, OCR support
+
+**Diseases:** Diabetes (98.18%), Heart Disease (98.02%), Breast Cancer (99.82%)
+
+---
+
+## ✨ Features
+
+- Multi-disease detection with clinical guidelines integration
+- Role-based authentication (Admin/Doctor/Staff/Patient)
+- O(1) HashMap lookups, <1ms predictions
+- PBKDF2 password hashing, SQL injection prevention
+- OCR medical report scanning, responsive PWA
+
+---
+
+## 🛠️ Tech Stack
+
+**Backend:** Python 3.13, Flask, C++17, pybind11, MySQL  
+**Frontend:** HTML5/CSS3, JavaScript, Bootstrap 5  
+**ML/DSA:** Custom decision trees, entropy-based splitting  
+**Tools:** CMake, Tesseract OCR, Git
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone & Build C++ Module
+```bash
+git clone https://github.com/abdulrafay1402/VitaCare.Pro.git
+cd VitaCare.Pro/cpp_core/build
+cmake .. && cmake --build . --config Release
+```
+
+### 2. Install Dependencies
+```bash
+cd ../../python_frontend
+pip install flask werkzeug pytesseract pillow mysql-connector-python pybind11
+```
+
+### 3. Configure Database
+```sql
+CREATE DATABASE hospital_management_db;
+```
+Set env vars: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`
+
+### 4. Train Models
+```bash
+python train.py --disease diabetes --dataset ../datasets/diabetes.csv --max-depth 15 --min-samples 4
+python train.py --disease heart --dataset ../datasets/heart.csv --max-depth 12 --min-samples 5
+python train.py --disease breast_cancer --dataset ../datasets/breast_cancer.csv --max-depth 12 --min-samples 4
+```
+
+### 5. Run
+```bash
+python app.py
+```
+Access at: **http://localhost:5000**
+
+---
+
+## 📊 Performance
+
+| Disease | Samples | Accuracy | Params |
+|---------|---------|----------|--------|
+| Diabetes | 768 | 98.18% | depth=15, split=4 |
+| Heart Disease | 303 | 98.02% | depth=12, split=5 |
+| Breast Cancer | 569 | 99.82% | depth=12, split=4 |
+
+**Datasets:** Pima Diabetes, Cleveland Heart, Wisconsin WDBC
+
+---
+
+## 🧮 DSA Implementation
+
+| Structure | Purpose | Complexity |
+|-----------|---------|------------|
+| HashMap | Threshold lookups | O(1) |
+| Decision Tree | Classification | O(log n) |
+| Priority Queue | Risk ranking | O(log n) |
+| Graph | Symptom mapping | O(V+E) |
+| QuickSort | Sorting | O(n log n) |
+| KMP/Boyer-Moore | Text search | O(n+m) |
+
+---
+
+## 📁 Structure
+
+```
+cpp_core/          # C++ DSA Engine
+  Include/         # Headers
+  src/             # Implementation + bindings
+  build/Release/   # Compiled module
+
+datasets/          # Training data (CSV)
+
+python_frontend/   # Flask Application
+  auth/            # Authentication
+  database/        # DB layer
+  predictions/     # Prediction engine
+  models/          # Trained models
+  static/          # CSS/JS
+  templates/       # HTML
+```
+
+---
+
+## 👥 Team
+
+**Abdul Rafay** (24K-3007) - C++ DSA Engine, Algorithm Design  
+**Afshal Liaquat** (24K-2558) - Group Leader, Backend  
+**Bisma Shahid** (24K-3012) - Frontend, Database
+
+**Course:** Data Structures & Algorithms | Fall 2025
+
+---
+
+## 📞 Contact
+
+**GitHub:** [abdulrafay1402](https://github.com/abdulrafay1402)  
+**Repository:** [VitaCare.Pro](https://github.com/abdulrafay1402/VitaCare.Pro)  
+**Issues:** [Report Issues](https://github.com/abdulrafay1402/VitaCare.Pro/issues)
+
+---
+
+<div align="center">
+
+**⭐ Star this repository if you find it helpful!**
+
+Made with ❤️ by Team VitaCare Pro
+
+</div>
 
 ---
 
