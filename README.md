@@ -1,9 +1,7 @@
 # VitaCare Pro - Multi-Disease Detection System
 
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](https://github.com/abdulrafay1402/VitaCare.Pro)
 [![Python](https://img.shields.io/badge/Python-3.13-blue)](https://www.python.org/)
 [![C++](https://img.shields.io/badge/C%2B%2B-17-orange)](https://isocpp.org/)
-[![Accuracy](https://img.shields.io/badge/Accuracy-98%25+-brightgreen)](https://github.com/abdulrafay1402/VitaCare.Pro)
 
 Intelligent hospital management system combining custom C++ DSA implementations with ML for disease prediction. Achieves 98%+ accuracy on diabetes, heart disease, and breast cancer detection.
 
