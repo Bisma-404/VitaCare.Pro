@@ -5,7 +5,6 @@
 
 Intelligent hospital management system combining custom C++ DSA implementations with ML for disease prediction. Achieves 98%+ accuracy on diabetes, heart disease, and breast cancer detection.
 
-**Repository:** [github.com/abdulrafay1402/VitaCare.Pro](https://github.com/abdulrafay1402/VitaCare.Pro)
 
 ---
 
