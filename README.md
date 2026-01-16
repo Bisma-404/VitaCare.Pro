@@ -9,7 +9,7 @@ Intelligent hospital management system combining custom C++ DSA implementations 
 
 ---
 
-## 🎯 Overview
+##  Overview
 
 VitaCare Pro demonstrates practical DSA applications in healthcare:
 - **Custom C++ DSA Engine** - HashMap, Decision Trees, Priority Queues, Graphs
@@ -21,7 +21,7 @@ VitaCare Pro demonstrates practical DSA applications in healthcare:
 
 ---
 
-## ✨ Features
+##  Features
 
 - Multi-disease detection with clinical guidelines integration
 - Role-based authentication (Admin/Doctor/Staff/Patient)
@@ -31,7 +31,7 @@ VitaCare Pro demonstrates practical DSA applications in healthcare:
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Flask Web App (Admin/Doctor/Staff/Patient)
@@ -45,7 +45,7 @@ C++ DSA Engine ←→ MySQL Database
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 **Backend:** Python 3.13, Flask 2.3.3, C++17, pybind11, MySQL 5.7+  
 **Frontend:** HTML5/CSS3, JavaScript, Bootstrap 5  
@@ -54,7 +54,7 @@ C++ DSA Engine ←→ MySQL Database
 
 ---
 
-## 🚀 Installation
+##  Installation
 
 ### Prerequisites
 - Python 3.13+ | C++ Compiler (MSVC/GCC) | CMake 3.12+ | MySQL 5.7+ | Git
@@ -93,7 +93,7 @@ Access at: **http://localhost:5000**
 
 ---
 
-## 📊 Performance
+##  Performance
 
 | Disease | Samples | Accuracy | Parameters |
 |---------|---------|----------|------------|
@@ -105,7 +105,7 @@ Access at: **http://localhost:5000**
 
 ---
 
-## 🧮 DSA Implementation
+##  DSA Implementation
 
 | Data Structure | Purpose | Complexity |
 |----------------|---------|------------|
@@ -118,7 +118,7 @@ Access at: **http://localhost:5000**
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 cpp_core/          # C++ DSA Engine
@@ -139,28 +139,14 @@ python_frontend/   # Flask Application
 
 ---
 
-## 👥 Team
+## License
 
-**Abdul Rafay** (24K-3007) - C++ DSA Engine, Algorithm Design  
-**Afshal Liaquat** (24K-2558) - Group Leader, Backend  
-**Bisma Shahid** (24K-3012) - Frontend, Database
+This project is for academic and institutional use. Please credit the developers if reused or modified for deployment.
 
-**Course:** Data Structures & Algorithms | Fall 2025
 
----
+## Developed By
+BISMA SHAHID  
+Department of Software Engineering  
+FAST NUCES KHI
 
-## 📞 Contact
 
-**GitHub:** [abdulrafay1402](https://github.com/abdulrafay1402)  
-**Repository:** [VitaCare.Pro](https://github.com/abdulrafay1402/VitaCare.Pro)  
-**Issues:** [Report Issues](https://github.com/abdulrafay1402/VitaCare.Pro/issues)
-
----
-
-<div align="center">
-
-**⭐ Star this repository if you find it helpful!**
-
-Made with ❤️ by Team VitaCare Pro
-
-</div>
